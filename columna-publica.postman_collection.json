@@ -1,0 +1,71 @@
+{
+  "info": {
+    "_postman_id": "columna-publica-api-collection",
+    "name": "Columna Publica API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get all publications",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5106/api/publications",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5106",
+          "path": ["api", "publications"]
+        }
+      }
+    },
+    {
+      "name": "Get publication by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5106/api/publications/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5106",
+          "path": ["api", "publications", ":id"]
+        }
+      }
+    },
+    {
+      "name": "Get publications by author",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5106/api/publications/author/:author",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5106",
+          "path": ["api", "publications", "author", ":author"]
+        }
+      }
+    },
+    {
+      "name": "Create publication",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Mi columna\",\n  \"author\": \"Juan Pérez\",\n  \"content\": \"Contenido de la columna\",\n  \"status\": \"EN_REVISION\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5106/api/publications",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5106",
+          "path": ["api", "publications"]
+        }
+      }
+    }
+  ]
+}

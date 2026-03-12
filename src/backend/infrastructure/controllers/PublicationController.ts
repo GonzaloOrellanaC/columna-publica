@@ -1,61 +1,32 @@
 import { Request, Response } from 'express';
-import { CreatePublication } from '../../usecases/CreatePublication';
-import { GetPublications } from '../../usecases/GetPublications';
-import { GetPublicationById } from '../../usecases/GetPublicationById';
-import { GetPublicationsByAuthor } from '../../usecases/GetPublicationsByAuthor';
+import { createPublication, findPublicationById, findPublicationsByAuthor, getAllPublications } from '../../services/publicationService';
+import { PublicationDocument } from '../../models/PublicationModel';
 
-export class PublicationController {
-  constructor(
-    private createPublication: CreatePublication,
-    private getPublications: GetPublications,
-    private getPublicationById: GetPublicationById,
-    private getPublicationsByAuthor: GetPublicationsByAuthor
-  ) {}
-
-  async create(req: Request, res: Response): Promise<void> {
-    try {
-      const { title, content, author } = req.body;
-      if (!title || !content || !author) {
-        res.status(400).json({ error: 'Missing required fields' });
-        return;
-      }
-      const publication = await this.createPublication.execute({ title, content, author });
-      res.status(201).json(publication);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+export const postPublication = async (req: Request, res: Response) => {
+    const publication: PublicationDocument = req.body;
+    if (!publication.title || !publication.content || !publication.author) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-  }
+    const response = await createPublication(publication);
+    res.status(201).json(response);
+};
 
-  async getAll(req: Request, res: Response): Promise<void> {
-    try {
-      const publications = await this.getPublications.execute();
-      res.status(200).json(publications);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  }
+export const getPublications = async (req: Request, res: Response) => {
+    const publications = await getAllPublications();
+    res.status(200).json(publications);
+}
 
-  async getById(req: Request, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const publication = await this.getPublicationById.execute(id);
-      if (!publication) {
-        res.status(404).json({ error: 'Publication not found' });
-        return;
-      }
-      res.status(200).json(publication);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+export const getPublicationById = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const response = await findPublicationById(id);
+    if (!response) {
+        return res.status(404).json({ error: 'Publication not found' });
     }
-  }
+    res.status(200).json(response);
+}
 
-  async getByAuthor(req: Request, res: Response): Promise<void> {
-    try {
-      const { author } = req.params;
-      const publications = await this.getPublicationsByAuthor.execute(author);
-      res.status(200).json(publications);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  }
+export const getPublicationsByAuthor = async (req: Request, res: Response) => {
+    const { author } = req.params;
+    const publications = await findPublicationsByAuthor(author);
+    res.status(200).json(publications);
 }
