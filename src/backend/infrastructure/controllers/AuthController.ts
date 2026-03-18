@@ -25,12 +25,14 @@ export async function login(req: Request, res: Response) {
   res.json({
     token,
     user: {
+      _id: user._id.toString(),
       email: user.email,
       nombres: user.nombres,
       apellidos: user.apellidos,
       descripcion: user.descripcion,
       resena: user.resena,
-      roles: user.roles
+      roles: user.roles,
+      avatarUrl: user.avatarUrl
     }
   });
 }

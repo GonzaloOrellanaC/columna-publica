@@ -38,6 +38,14 @@ export async function getUsers() {
   return response.data;
 }
 
+export async function deleteUser(userId: string) {
+  const token = localStorage.getItem('token');
+  const response = await axios.delete(`/users/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+}
+
 export async function forgotPassword(email: string) {
   const response = await axios.post(`/auth/forgot-password`, { email });
   return response.data;

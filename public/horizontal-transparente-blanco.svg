@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Horizontal logo with transparent background and white text -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" role="img" aria-label="Columna Pública - Blanco">
+  <title>Columna Pública - Horizontal (letras blancas)</title>
+  <g transform="matrix(0.3, 0, 0, 0.3, 10, -17)" fill="#ffffff">
+    <rect x="140" y="125" width="120" height="10" />
+    <rect x="172" y="135" width="56" height="35" />
+    <path d="M 172,135 A 18,18 0 0,0 172,170 A 25,25 0 0,1 172,135 Z" />
+    <path d="M 228,135 A 18,18 0 0,1 228,170 A 25,25 0 0,0 228,135 Z" />
+    <path d="M162,190 L238,190 L228,170 L172,170 Z" />
+    <rect x="172" y="190" width="12" height="200" />
+    <rect x="194" y="190" width="12" height="200" />
+    <rect x="216" y="190" width="12" height="200" />
+  </g>
+
+  <!-- Text explicitly white -->
+  <text x="110" y="65" font-family="Cinzel, serif" font-size="38" font-weight="700" text-anchor="start" fill="#ffffff">COLUMNA</text>
+  <text x="115" y="95" font-family="Cinzel, serif" font-size="14" letter-spacing="0.5em" font-weight="400" text-anchor="start" fill="#ffffff">PÚBLICA</text>
+</svg>

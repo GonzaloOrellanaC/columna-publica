@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 
-import { getUsers } from '../api/auth';
+import { getUsers, deleteUser } from '../api/auth';
 import { getRoleLabel } from '../utils/roleLabels';
 
 export default function UserList() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -25,6 +26,31 @@ export default function UserList() {
     fetchUsers();
     return () => { mounted = false; };
   }, []);
+
+  const currentUser = (() => {
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+  const isAdmin = !!(currentUser && Array.isArray(currentUser.roles) && currentUser.roles.some((r: any) => r.name === 'admin' || r.name === 'superadmin'));
+
+  async function handleDelete(userId: string) {
+    if (!isAdmin) return;
+    const confirm = window.confirm('¿Estás seguro que deseas eliminar este usuario? Esta acción no se puede deshacer.');
+    if (!confirm) return;
+    try {
+      setDeletingId(userId);
+      await deleteUser(userId);
+      setUsers(prev => prev.filter(u => u._id !== userId));
+    } catch (err) {
+      alert('No se pudo eliminar el usuario');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (loading) return <div>Cargando usuarios...</div>;
   if (error) return <div>{error}</div>;
@@ -52,7 +78,16 @@ export default function UserList() {
                 <td style={{ padding: '10px 8px' }}>{user.apellidos}</td>
                 <td style={{ padding: '10px 8px' }}>{user.roles.map((r: any) => getRoleLabel(r.name)).join(', ')}</td>
                 <td style={{ padding: '10px 8px' }}>
-                  <a href={`/user/${user._id}/edit`} style={{ color: '#4fd1c5', textDecoration: 'underline' }}>Editar</a>
+                  <a href={`/user/${user._id}/edit`} style={{ color: '#4fd1c5', textDecoration: 'underline', marginRight: 12 }}>Editar</a>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDelete(user._id)}
+                      disabled={deletingId === user._id}
+                      style={{ background: '#ff4d4f', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      {deletingId === user._id ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

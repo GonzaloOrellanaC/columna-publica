@@ -9,6 +9,7 @@ const UserSchema = new Schema<User>({
   apellidos: { type: String, required: true },
   descripcion: { type: String },
   resena: { type: String },
+  avatarUrl: { type: String },
   roles: [{
     type: Schema.Types.ObjectId,
     ref: 'Role',

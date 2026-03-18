@@ -20,10 +20,14 @@ export default function Login() {
       if (data.token) {
         localStorage.setItem('token', data.token);
       }
-      // Redirigir según rol
-      const isAdmin = data.user?.roles?.some((r: any) => r.name === 'admin' || r.name === 'superadmin');
+      // Redirigir según rol: admins y editors van a /admin, otros a /publish
+      const roles = data.user?.roles || [];
+      const isAdmin = roles.some((r: any) => r.name === 'admin' || r.name === 'superadmin');
+      const isEditor = roles.some((r: any) => r.name === 'editor');
       if (isAdmin) {
         navigate('/admin');
+      } else if (isEditor) {
+        navigate('/editor');
       } else {
         navigate('/publish');
       }

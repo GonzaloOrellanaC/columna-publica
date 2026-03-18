@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { slugifyFullName, slugifyTitle } from '../utils/slug';
 import ShareButtons from '../components/ShareButtons';
 
 interface Publication {
@@ -68,7 +69,7 @@ export default function Home() {
                   <h2 className="pub-title">{pub.title}</h2>
                   <div className="pub-meta">
                     <div className="pub-author-info">
-                      <Link to={`/author/${encodeURIComponent(pub.author)}`} className="author-link">
+                      <Link to={`/author/${slugifyFullName(pub.author)}`} className="author-link">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${encodeURIComponent(pub.author)}&background=random&color=fff&size=150`} 
                           alt={pub.author} 
@@ -76,7 +77,7 @@ export default function Home() {
                         />
                       </Link>
                       <div>
-                        <Link to={`/author/${encodeURIComponent(pub.author)}`} className="author-link">
+                        <Link to={`/author/${slugifyFullName(pub.author)}`} className="author-link">
                           <span className="pub-author">Por {pub.author}</span>
                         </Link>
                         <span className="pub-date">
@@ -92,9 +93,9 @@ export default function Home() {
                 </header>
                 <div className="pub-content">{pub.content}</div>
                 <div className="pub-footer">
-                  <Link to={`/publication/${pub.id}`} className="btn-read-more">Leer columna</Link>
+                  <Link to={`/publication/${slugifyTitle(pub.title || pub.id)}`} className="btn-read-more">Leer columna</Link>
                   <ShareButtons 
-                    url={`${window.location.origin}/publication/${pub.id}`} 
+                    url={`${window.location.origin}/publication/${slugifyTitle(pub.title || pub.id)}`} 
                     title={pub.title} 
                   />
                 </div>

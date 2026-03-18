@@ -3,6 +3,9 @@ import { Request, Response } from 'express';
 import { UserModel } from '../../models/UserModel';
 import { sendWelcomeEmail } from '../../services/userEmailService';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
+import { findUserByFullName } from '../../services/userService';
 
 export async function createUser(req: Request, res: Response) {
   try {
@@ -76,4 +79,74 @@ export async function getUserById(id: string) {
     throw new Error('Usuario no encontrado');
   }
   return user;
+}
+
+export async function uploadAvatar(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ message: 'Falta archivo' });
+    const avatarPath = `/public/uploads/avatars/${req.file.filename}`;
+    const fullAvatarPath = path.join(process.cwd(), avatarPath);
+    if (!fs.existsSync(fullAvatarPath)) {
+      res.status(500).json({ message: 'Archivo subido no encontrado en el servidor' });
+    } else {
+      const user = await UserModel.findByIdAndUpdate(id, { avatarUrl: avatarPath }, { new: true }).populate('roles');
+      if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+      res.json(user);
+    }
+  } catch (err: any) {
+    console.error('Error uploading avatar:', err);
+    res.status(500).json({ message: err.message });
+  }
+}
+
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const user = await UserModel.findById(id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    // If user has an avatar file stored under /public/uploads/avatars, try to remove it
+    if (user.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.includes('/public/uploads/avatars/')) {
+      try {
+        const filename = path.basename(user.avatarUrl);
+        const filePath = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (fsErr) {
+        console.warn('No se pudo eliminar el archivo de avatar:', fsErr);
+      }
+    }
+
+    await UserModel.findByIdAndDelete(id);
+    res.json({ message: 'Usuario eliminado correctamente' });
+  } catch (err: any) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ message: err.message });
+  }
+}
+
+export async function getUserByNameHandler(req: Request, res: Response) {
+  try {
+    const { name } = req.params;
+    if (!name) return res.status(400).json({ message: 'Falta nombre' });
+
+    // Buscar por nombres o apellidos (case-insensitive)
+    const user = await findUserByFullName(name);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+    const responseUser = {
+      _id: user._id,
+      email: user.email,
+      nombres: user.nombres,
+      apellidos: user.apellidos,
+      descripcion: user.descripcion,
+      resena: user.resena,
+      roles: user.roles,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt
+    };
+    res.json(responseUser);
+  } catch (err: any) {
+    console.error('Error buscando usuario por nombre:', err);
+    res.status(500).json({ message: err.message });
+  }
 }

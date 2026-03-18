@@ -1,40 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { unslugifyFullName, slugifyTitle } from '../utils/slug';
 import ShareButtons from '../components/ShareButtons';
-
-interface Publication {
-  id: string;
-  title: string;
-  content: string;
-  author: string;
-  createdAt: string;
-  status?: 'EN_CREACION' | 'EN_REVISION' | 'ITERANDO' | 'APROBADO' | 'PUBLICADA';
-}
+import { getPublicationByFullName } from '../api/publications';
+import { getUserByFullName } from '../api/user';
+import { Author, Publication } from '../interfaces';
 
 export default function AuthorProfile() {
-  const { authorName } = useParams<{ authorName: string }>();
+  const { authorFullName } = useParams<{ authorFullName: string }>();
+  const displayName = authorFullName ? unslugifyFullName(authorFullName) : '';
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [author, setAuthor] = useState<Author | null>(null);
+
+  useEffect(() => {
+    console.log('Author:', author);
+  }, [author]);
 
   useEffect(() => {
     const fetchAuthorPublications = async () => {
-      try {
-        const res = await fetch(`/api/publications/author/${authorName}`);
-        if (res.ok) {
-          const data = await res.json();
-          setPublications(data);
+        try {
+          const res = await getPublicationByFullName(displayName || '');
+          setPublications(res);
+        } catch (error) {
+          console.error('Error fetching author publications:', error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching author publications:', error);
-      } finally {
-        setLoading(false);
-      }
     };
 
-    if (authorName) {
-      fetchAuthorPublications();
+    if (authorFullName) {
+        fetchAuthorPublications();
+        // fetch user profile details (descripcion, resena)
+        (async () => {
+          try {
+            const res = getUserByFullName(displayName || '');
+            const data = await res;
+            setAuthor(data);
+          } catch (e) {
+            // ignore
+          }
+        })();
     }
-  }, [authorName]);
+  }, [authorFullName]);
 
   if (loading) {
     return <div className="loading-state">Cargando perfil...</div>;
@@ -46,12 +54,18 @@ export default function AuthorProfile() {
       
       <div className="author-header">
         <img 
-          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(authorName || '')}&background=random&color=fff&size=200`} 
-          alt={authorName} 
+          src={author?.avatarUrl ? `${(import.meta.env as any).VITE_ASSETS_URL}${author.avatarUrl}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || '')}&background=random&color=fff&size=200`} 
+            alt={displayName} 
           className="author-avatar-profile" 
         />
-        <h1 className="author-name">{authorName}</h1>
-        <p className="author-bio">Columnista en Columna Pública</p>
+          <h1 className="author-name">{displayName}</h1>
+        <div style={{ width: '100%', marginTop: 12 }}>
+              <h4 style={{ margin: '0 0 8px 0', color: '#cfe8ff' }}>Descripción</h4>
+              <div style={{ color: '#e6eef6', textAlign: 'justify' }}>{author?.descripcion || 'Sin descripción.'}</div>
+              <br />
+              <h4 style={{ margin: '0 0 8px 0', color: '#cfe8ff' }}>Reseña</h4>
+              <div style={{ color: '#e6eef6', textAlign: 'justify' }}>{author?.resena || 'Sin reseña.'}</div>
+        </div>
       </div>
 
       <div className="author-publications">
@@ -63,7 +77,7 @@ export default function AuthorProfile() {
             </div>
           ) : (
             publications.map((pub) => (
-              <article key={pub.id} className="publication-card">
+              <article key={pub._id} className="publication-card">
                 <header className="pub-header">
                   <h2 className="pub-title">{pub.title}</h2>
                   <div className="pub-meta">
@@ -78,9 +92,9 @@ export default function AuthorProfile() {
                 </header>
                 <div className="pub-content">{pub.content}</div>
                 <div className="pub-footer">
-                  <Link to={`/publication/${pub.id}`} className="btn-read-more">Leer columna</Link>
+                <Link to={`/publication/${slugifyTitle(pub.title || pub._id)}`} className="btn-read-more">Leer columna</Link>
                   <ShareButtons 
-                    url={`${window.location.origin}/publication/${pub.id}`} 
+                    url={`${window.location.origin}/publication/${slugifyTitle(pub.title || pub._id)}`} 
                     title={pub.title} 
                   />
                 </div>

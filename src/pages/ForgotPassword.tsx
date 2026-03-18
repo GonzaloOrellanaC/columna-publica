@@ -19,16 +19,6 @@ export default function ForgotPassword() {
       } else {
         setError('No se pudo enviar el correo.');
       }
-      /* const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      if (res.ok) {
-        setSent(true);
-      } else {
-        setError('No se pudo enviar el correo.');
-      } */
     } catch {
       setError('No se pudo enviar el correo.');
     }

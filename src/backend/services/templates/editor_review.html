@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { background: #0b1a26; font-family: Arial, Helvetica, sans-serif; color: #ffffff; }
+      .container { max-width: 700px; margin: 0 auto; padding: 24px; }
+      .header { display:flex; align-items:center; gap:12px; }
+      .logo { height: 48px; }
+      h1 { font-size: 20px; margin: 12px 0; }
+      p { color: #ffffff; }
+      .meta { color: #cfe8ff; font-size: 14px; margin-bottom: 16px; }
+      .button { display:inline-block; padding: 10px 16px; border-radius: 6px; font-weight:600; text-decoration:none; margin-right:8px; }
+      .approve { background: #48bb78; color:#062018; }
+      .reject { background: #ff4d4f; color:#fff; }
+      .view { background: #5b9bd5; color: #fff; }
+      .footer { margin-top: 24px; color:#9fb4c8; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="/public/horizontal-transparente.png" class="logo" alt="Columna Pública" />
+      </div>
+      <h1>Nueva publicación para revisar</h1>
+      <p class="meta">Se publicó una nueva columna por <strong>{{authorName}}</strong> el <strong>{{publishDate}}</strong>.</p>
+
+      <p style="font-size:16px; color:#fff"><strong>{{title}}</strong></p>
+
+      <p>Por favor revisa la publicación y decide si la apruebas o la rechazas.</p>
+
+      <div style="margin-top:18px">
+        <a href="{{link}}" class="button view">Ver publicación</a>
+        <a href="{{approveLink}}" class="button approve">Aprobar</a>
+        <a href="{{rejectLink}}" class="button reject">Rechazar</a>
+      </div>
+
+      <div class="footer">
+        Si no puedes acceder, copia y pega este enlace en tu navegador: {{link}}
+      </div>
+    </div>
+  </body>
+</html>

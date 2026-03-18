@@ -98,6 +98,14 @@ body {
   color: #ffffff;
 }
 
+.navbar-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #2d4356;
+}
+
 .nav-link {
   color: #e0e6ed;
   text-decoration: none;
@@ -523,6 +531,33 @@ body {
   margin-bottom: 1.5rem;
 }
 
+/* Mobile adjustments for publication detail */
+@media (max-width: 600px) {
+  .publication-detail-container {
+    padding: 2rem 1rem;
+  }
+
+  .publication-detail-card {
+    padding: 1.25rem;
+  }
+
+  .detail-title {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .detail-content {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .detail-meta {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 1rem;
+  }
+}
+
 .loading-state, .error-state {
   text-align: center;
   padding: 6rem 2rem;
@@ -621,7 +656,7 @@ body {
   background: #142230;
   border: 1px solid #2d4356;
   border-radius: 8px;
-  padding: 2.5rem;
+  padding: 1rem;
   max-width: 650px;
   width: 90%;
   max-height: 85vh;

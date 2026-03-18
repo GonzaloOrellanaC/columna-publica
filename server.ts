@@ -5,13 +5,18 @@ import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 
 import publicationRoutes from './src/backend/infrastructure/routes/publicationRoutes';
+import previewRoute from './src/backend/infrastructure/routes/previewRoutes';
 import { connectDB } from './src/backend/infrastructure/database/db';
 import { createSuperAdminFromEnv } from './src/backend/infrastructure/database/createSuperAdmin';
 import { ensureRolesExist } from './src/backend/infrastructure/database/initRoles';
 import authRoute from './src/backend/infrastructure/routes/authRoutes';
 import userRoutes from './src/backend/infrastructure/routes/userRoutes';
 import rolesRoutes from './src/backend/infrastructure/routes/rolesRoutes';
+import testMailRoute from './src/backend/infrastructure/routes/testMailRoutes';
+import tagRoutes from './src/backend/infrastructure/routes/tagRoutes';
+import visitRoutes from './src/backend/infrastructure/routes/visitRoutes';
 import { UserModel } from './src/backend/models/UserModel';
+
 
 async function startServer() {
   const app = express();
@@ -22,26 +27,42 @@ async function startServer() {
   await UserModel.init();
   await ensureRolesExist();
   await createSuperAdminFromEnv();
+  // ensure tags collection is populated from .env if missing
+  try {
+    const { ensureTagsExist } = await import('./src/backend/infrastructure/database/initTags');
+    await ensureTagsExist();
+  } catch (e) {
+    console.warn('Could not ensure tags exist:', e);
+  }
 
   app.use(cors({
     origin: [
       'http://localhost:5107',
-      'https://columnapublica.cl'
+      'https://columnapublica.cl',
+      'https://www.columnapublica.cl'
     ],
     credentials: true
   }));
   app.use(express.json());
 
+  // Expose `public/` so assets placed there are reachable at /public/<file>
+  app.use('/public', express.static('public'));
 
   // API Routes
 
   app.use('/api/publications', publicationRoutes);
+  // preview route for social sharing (renders OG meta tags server-side)
+  app.use('/', previewRoute);
   app.use('/api/auth', authRoute);
   app.use('/api/users', userRoutes);
   app.use('/api/roles', rolesRoutes);
-
+  app.use('/api/test-mail', testMailRoute);
+  app.use('/api/tags', tagRoutes);
+  app.use('/api/visits', visitRoutes);
+  
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  
+  if (process.env.NODE_ENV !== 'development') {
     const vite = await createViteServer({
       server: { middlewareMode: true, port: 5107 },
       appType: 'spa',

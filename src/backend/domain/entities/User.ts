@@ -7,6 +7,7 @@ export interface User extends Document {
   apellidos: string;
   descripcion?: string;
   resena?: string;
+  avatarUrl?: string;
   roles: string[];
   createdAt: Date;
 }

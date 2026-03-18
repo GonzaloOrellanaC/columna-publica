@@ -26,3 +26,10 @@ export function getResetEmail(name: string, resetLink: string) {
   const templatePath = path.join(__dirname, 'templates', 'reset.html');
   return renderTemplate(templatePath, { name, resetLink });
 }
+
+export function getEditorNotificationEmail(authorName: string, publishDate: string, title: string, link: string, approveLink: string, rejectLink: string) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const templatePath = path.join(__dirname, 'templates', 'editor_review.html');
+  return renderTemplate(templatePath, { authorName, publishDate, title, link, approveLink, rejectLink });
+}
