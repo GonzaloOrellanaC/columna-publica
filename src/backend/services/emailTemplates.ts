@@ -12,24 +12,24 @@ function renderTemplate(templatePath: string, variables: Record<string, string>)
 }
 
 
-export function getWelcomeEmail(name: string, resetLink: string) {
+export function getWelcomeEmail(name: string, resetLink: string, logoUrl: string) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const templatePath = path.join(__dirname, 'templates', 'welcome.html');
-  return renderTemplate(templatePath, { name, resetLink });
+  return renderTemplate(templatePath, { name, resetLink, logoUrl });
 }
 
 
-export function getResetEmail(name: string, resetLink: string) {
+export function getResetEmail(name: string, resetLink: string, logoUrl: string) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const templatePath = path.join(__dirname, 'templates', 'reset.html');
-  return renderTemplate(templatePath, { name, resetLink });
+  return renderTemplate(templatePath, { name, resetLink, logoUrl });
 }
 
-export function getEditorNotificationEmail(authorName: string, publishDate: string, title: string, link: string, approveLink: string, rejectLink: string) {
+export function getEditorNotificationEmail(authorName: string, publishDate: string, title: string, link: string, approveLink: string, rejectLink: string, logoUrl: string) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const templatePath = path.join(__dirname, 'templates', 'editor_review.html');
-  return renderTemplate(templatePath, { authorName, publishDate, title, link, approveLink, rejectLink });
+  return renderTemplate(templatePath, { authorName, publishDate, title, link, approveLink, rejectLink, logoUrl });
 }

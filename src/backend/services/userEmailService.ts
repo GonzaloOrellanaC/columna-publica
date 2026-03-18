@@ -6,20 +6,23 @@ import { UserModel } from '../models/UserModel';
 export async function sendWelcomeEmail(to: string, name: string, token: string) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5107';
   const resetLink = `${frontendUrl}/reset-password/${token}`;
-  const html = getWelcomeEmail(name, resetLink);
+  const logoUrl = `${frontendUrl}/public/horizontal-transparente.png`; // Adjust if your logo is located elsewhere
+  const html = getWelcomeEmail(name, resetLink, logoUrl);
   await sendMail(to, 'Bienvenido a Columna Pública', html);
 }
 
 export async function sendResetPasswordEmail(to: string, name: string, token: string) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5107';
   const resetLink = `${frontendUrl}/reset-password/${token}`;
-  const html = getResetEmail(name, resetLink);
+  const logoUrl = `${frontendUrl}/public/horizontal-transparente.png`; // Adjust if your logo is located elsewhere
+  const html = getResetEmail(name, resetLink, logoUrl);
   await sendMail(to, 'Recupera tu contraseña - Columna Pública', html);
 }
 
 export async function sendEditorNotificationToEditors(authorName: string, publishDate: string, title: string, publicationId: string) {
   try {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5107';
+    const logoUrl = `${frontendUrl}/public/horizontal-transparente.png`; // Adjust if your logo is located elsewhere
     // create a slug from title for public link
     const slug = (title || '')
       .normalize('NFD')
@@ -38,7 +41,7 @@ export async function sendEditorNotificationToEditors(authorName: string, publis
     const emails = editors.map(e => e.email).filter(Boolean);
     if (emails.length === 0) return;
 
-    const html = getEditorNotificationEmail(authorName, publishDate, title, link, approveLink, rejectLink);
+    const html = getEditorNotificationEmail(authorName, publishDate, title, link, approveLink, rejectLink, logoUrl);
     // send to all editors (comma-separated list)
     await sendMail(emails.join(','), `Nueva publicación para revisar: ${title}`, html);
   } catch (err) {
