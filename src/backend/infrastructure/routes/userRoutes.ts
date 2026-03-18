@@ -13,6 +13,7 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${id}${ext}`);
   }
 });
+console.log('Avatar upload path:', path.join(process.cwd(), 'public', 'uploads', 'avatars'));
 const upload = multer({ storage });
 
 router.get('/', getUsers);

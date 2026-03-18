@@ -17,12 +17,15 @@ import tagRoutes from './src/backend/infrastructure/routes/tagRoutes';
 import visitRoutes from './src/backend/infrastructure/routes/visitRoutes';
 import { UserModel } from './src/backend/models/UserModel';
 import path from 'path';
-
+import { fileURLToPath } from 'url';
 
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
 
+  // Fix for ESM: __dirname is not defined, compute from import.meta.url
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
 
   await connectDB();
   await UserModel.init();
