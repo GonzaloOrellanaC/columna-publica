@@ -97,10 +97,15 @@ export const renderPublicationPreview = async (req: Request, res: Response) => {
   <meta name="author" content="${escapeHtml(authorName || 'Columna Pública')}" />
   <meta name="robots" content="index,follow" />
   <meta property="og:image:alt" content="${escapeHtml(title)}" />
-  <script>window.location.replace('${escapeJs(origin)}');</script>
 </head>
 <body>
-  <p>Redirecting to <a href="${escapeHtml(req.originalUrl)}">${escapeHtml(req.originalUrl)}</a></p>
+  <main style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color: #e6eef6; background: #071021; min-height: 100vh; display:flex; align-items:center; justify-content:center;">
+    <div style="max-width:900px;padding:32px;background:#071021;">
+      <h1 style="color:#fff;margin-bottom:8px">${escapeHtml(title)}</h1>
+      <p style="color:#cbd5e0;white-space:pre-wrap">${escapeHtml(description)}</p>
+      <p style="margin-top:16px;color:#9fb0c8">Si no ves la columna completa, abrela desde la página principal o comparte el enlace.</p>
+    </div>
+  </main>
 </body>
 </html>`;
 
