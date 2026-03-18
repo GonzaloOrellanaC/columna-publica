@@ -145,6 +145,7 @@ export const updatePublication = async (req: Request, res: Response) => {
         }
         if (body.title) update.title = body.title;
         if (body.content) update.content = body.content;
+        if (body.resena) update.resena = body.resena;
         if (body.status) update.status = body.status;
         if (body.title) {
             try {

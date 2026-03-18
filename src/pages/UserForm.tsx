@@ -152,7 +152,7 @@ export default function UserForm() {
           }
         }
       }
-      navigate('/users');
+      navigate(-1);
     } catch (err) {
       console.error(err);
       setError('Error al guardar el usuario');

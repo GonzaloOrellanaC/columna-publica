@@ -6,7 +6,7 @@ export default function About() {
     <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem' }}>
       <div style={{ marginBottom: '2rem' }}>
         <Link to="/" className="btn-back">
-          &larr; Volver a la página principal
+          Volver a la página principal
         </Link>
       </div>
       <h1 className="section-title">Quiénes Somos</h1>

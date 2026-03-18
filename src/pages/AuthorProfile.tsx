@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { unslugifyFullName, slugifyTitle } from '../utils/slug';
 import ShareButtons from '../components/ShareButtons';
 import { getPublicationByFullName } from '../api/publications';
@@ -12,6 +12,7 @@ export default function AuthorProfile() {
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [author, setAuthor] = useState<Author | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.log('Author:', author);
@@ -50,7 +51,7 @@ export default function AuthorProfile() {
 
   return (
     <div className="author-profile-container">
-      <Link to="/" className="btn-back">Volver a la página principal</Link>
+      <button type="button" className="btn-back" onClick={() => navigate(-1)}>Volver atrás</button>
       
       <div className="author-header">
         <img 

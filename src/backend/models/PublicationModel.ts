@@ -10,7 +10,8 @@ export interface PublicationDocument extends Document {
     publishDate: Date;
     content: string;
 	slug?: string;
-    summary?: string;
+	resena?: string;
+	summary?: string;
     tags: string[];
     status: PublicationStatus;
 	imageUrl?: string;
@@ -30,6 +31,7 @@ const PublicationSchema = new Schema<PublicationDocument>(
 		author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 		publishDate: { type: Date, required: true },
 		content: { type: String, required: true },
+		resena: { type: String },
 		summary: { type: String, required: false },
 		tags: { type: [String], default: [] },
 		slug: { type: String, index: true },

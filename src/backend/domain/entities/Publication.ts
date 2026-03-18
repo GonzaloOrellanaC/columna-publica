@@ -5,6 +5,7 @@ export interface Publication {
   title: string;
   content: string;
   author: string;
+  resena?: string;
   createdAt: Date;
   status?: PublicationStatus;
 }

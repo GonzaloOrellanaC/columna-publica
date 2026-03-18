@@ -43,6 +43,7 @@ export const postPublication = async (publication: any, file?: File) => {
   fd.append('author', publication.author);
   fd.append('content', publication.content);
   fd.append('status', publication.status);
+  if (publication.resena) fd.append('resena', publication.resena);
   if (publication.tags) fd.append('tags', typeof publication.tags === 'string' ? publication.tags : JSON.stringify(publication.tags));
   if (file) fd.append('image', file);
   console.log('Posting publication with data:', fd);
@@ -75,6 +76,7 @@ export const updatePublication = async (id: string, publication: any, file?: Fil
   const fd = new FormData();
   if (publication.title) fd.append('title', publication.title);
   if (publication.content) fd.append('content', publication.content);
+  if (publication.resena) fd.append('resena', publication.resena);
   if (publication.status) fd.append('status', publication.status);
   if (publication.publicationDate) fd.append('publicationDate', publication.publicationDate);
   if (publication.tags) fd.append('tags', typeof publication.tags === 'string' ? publication.tags : JSON.stringify(publication.tags));

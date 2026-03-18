@@ -17,6 +17,7 @@ export default function PublicationDetail() {
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [me, setMe] = useState<any>(null);
+  const [showResenaDialog, setShowResenaDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -263,6 +264,9 @@ export default function PublicationDetail() {
           <span className="share-label">Compartir columna:</span>
           <ShareButtons url={`${window.location.origin}/publication/${slugifyTitle(publication.title || (publication._id || 'preview'))}`} title={publication.title} disabled={!!state.draft} />
           {/* <button className="btn-outline" onClick={openExportModal} style={{ marginLeft: 'auto' }}>Generar PNG</button> */}
+          {publication.resena && (
+            <button className="btn-outline" onClick={() => setShowResenaDialog(true)} style={{ marginLeft: '8px' }}>Reseña</button>
+          )}
           {isEditor && publication.status === 'EN_REVISION' && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <button onClick={handleApprove} style={{ background: '#48bb78', color: '#062018', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>Aprobar</button>
@@ -270,6 +274,18 @@ export default function PublicationDetail() {
             </div>
           )}
         </div>
+
+        {showResenaDialog && (
+          <div className="modal-overlay" onClick={() => setShowResenaDialog(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <button className="modal-close-btn" onClick={() => setShowResenaDialog(false)}>×</button>
+              <h3 className="modal-title">Reseña</h3>
+              <div className="modal-body">
+                <div style={{ whiteSpace: 'pre-wrap', color: '#cbd5e0' }}>{publication.resena}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 
           Si el usuario es editor y esta publicación está en revisión, mostrar un botón para aprobarla o devolverla al autor con comentarios. Esto se puede hacer verificando el rol del usuario (guardado en localStorage) y el estado de la publicación.

@@ -22,6 +22,7 @@ export interface Publication {
   title: string;
   content: string;
   author: Author | string;
+  resena?: string;
   summary?: string;
   tags: string[];
   createdAt: string;

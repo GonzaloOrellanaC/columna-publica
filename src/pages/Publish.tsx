@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { get, set } from 'idb-keyval';
-import Cropper from 'react-easy-crop';
 import AvatarCropDialog from '../components/AvatarCropDialog';
 import { getPublicationByAuthorId, postPublication, updatePublication } from '../api/publications';
 import { slugifyTitle } from '../utils/slug';
@@ -21,6 +20,8 @@ export default function Publish() {
   const cropOutputWidth = 1200; // final width for 3:2 -> 1200x800
   const cropOutputHeight = 800;
   const [loading, setLoading] = useState(false);
+  const [resena, setResena] = useState<string>('');
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showTagsDialog, setShowTagsDialog] = useState(false);
@@ -76,9 +77,11 @@ export default function Publish() {
       const draftTitle = await get(`draft_title_${author.nombres}_${author.apellidos}`);
       const draftContent = await get(`draft_content_${author.nombres}_${author.apellidos}`);
       const draftImage = await get(`draft_image_${author.nombres}_${author.apellidos}`);
+      const draftResena = await get(`draft_resena_${author.nombres}_${author.apellidos}`);
       if (draftTitle) setTitle(draftTitle);
       if (draftContent) setContent(draftContent);
       if (draftImage) setCroppedDataUrl(draftImage as string);
+      if (draftResena) setResena(draftResena as string);
     };
     loadDraft();
 
@@ -208,14 +211,19 @@ export default function Publish() {
     const saveDraft = async () => {
       await set(`draft_title_${author.nombres}_${author.apellidos}`, title);
       await set(`draft_content_${author.nombres}_${author.apellidos}`, content);
+      await set(`draft_resena_${author.nombres}_${author.apellidos}`, resena);
     };
     // Debounce saving slightly or save directly
     const timeoutId = setTimeout(saveDraft, 500);
     return () => clearTimeout(timeoutId);
-  }, [title, content, author, editingId]);
+  }, [title, content, author, editingId, resena]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (content.length > 520 && (!resena || resena.trim().length === 0)) {
+      alert('Esta publicación supera los 520 carácteres. Debes agregar una reseña antes de enviar.');
+      return;
+    }
     setLoading(true);
     let fileToSend = null;
     if (file) {
@@ -226,7 +234,7 @@ export default function Publish() {
     }
     try {
       if (editingId) {
-        const res = await (await import('../api/publications')).updatePublication(editingId, { title, author: authorId, content, status: 'EN_REVISION' }, fileToSend);
+        const res = await (await import('../api/publications')).updatePublication(editingId, { title, author: authorId, content, resena, status: 'EN_REVISION' }, fileToSend);
         if (res) {
           // reset editing state
           setEditingId(null);
@@ -234,7 +242,7 @@ export default function Publish() {
         }
       } else {
         const history: History[] = [{ status: 'EN_REVISION', publishDate: new Date(), content: 'Publicación creada y enviada a revisión.' }];
-        const res = await postPublication({ title, author: authorId, content, status: 'EN_REVISION', history, tags: selectedTags }, fileToSend)
+        const res = await postPublication({ title, author: authorId, content, resena, status: 'EN_REVISION', history, tags: selectedTags }, fileToSend)
         if (res) {
           setSelectedTags([]);
         }
@@ -243,9 +251,11 @@ export default function Publish() {
         await set(`draft_title_${author.nombres}_${author.apellidos}`, '');
         await set(`draft_content_${author.nombres}_${author.apellidos}`, '');
         await set(`draft_image_${author.nombres}_${author.apellidos}`, '');
+        await set(`draft_resena_${author.nombres}_${author.apellidos}`, '');
       }
       setTitle('');
       setContent('');
+      setResena('');
       setCroppedDataUrl(null);
       setFile(null);
     } catch (error) {
@@ -269,6 +279,10 @@ export default function Publish() {
     setEditingId(pub._id);
     setTitle(pub.title);
     setContent(pub.content);
+    try {
+      if ((pub as any).resena) setResena((pub as any).resena);
+      else setResena('');
+    } catch {}
     // populate selected tags when editing
     try {
       const existingTags = (pub as any).tags;
@@ -350,9 +364,6 @@ export default function Publish() {
                 <li><strong>Opinión Personal:</strong> Da énfasis a que lo escrito es tu opinión personal. Fomenta el debate constructivo.</li>
               </ul>
               <p>
-                <strong>Uso de Inteligencia Artificial:</strong> El editor, mediante herramientas de análisis de inteligencia artificial, evaluará el contenido. Si se determina que el uso de estas herramientas es sobresaliente o excesivo y reemplaza la voz auténtica del autor, <strong>se rechazará la publicación</strong>.
-              </p>
-              <p>
                 En casos de incumplimiento reiterado, se podrá determinar <strong>terminar con tu permiso de publicación</strong>.
               </p>
               <p style={{ fontStyle: 'italic', marginTop: '1.5rem', borderTop: '1px solid #2d4356', paddingTop: '1rem' }}>
@@ -363,8 +374,22 @@ export default function Publish() {
         </div>
       )}
 
+      {showInfoDialog && (
+        <div className="modal-overlay" onClick={() => setShowInfoDialog(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowInfoDialog(false)}>×</button>
+            <h3 className="modal-title">¿Para qué sirve cada campo?</h3>
+            <div className="modal-body">
+              <p><strong>Título:</strong> Un texto corto y evidente que describe la columna.</p>
+              <p><strong>Contenido:</strong> Es el texto que se mostrará en la columna. Si supera los 520 carácteres, se solicitará una "Reseña".</p>
+              <p><strong>Reseña:</strong> Texto breve que se podrá compartir en formato imagen; debe destacar lo que el columnista quiera mostrar del contenido más largo.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ flex: 1 }}>
-        <Link to="/" className="btn-back">Volver a la página principal</Link>
+        <button type="button" className="btn-back" onClick={() => navigate(-1)}>Volver atrás</button>
         <div className="form-container">
           <h3 className="form-title">Nueva Publicación</h3>
           
@@ -403,8 +428,19 @@ export default function Publish() {
             <input id="title" type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value.slice(0, titleMax))} required />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ color: '#9fb0c8' }}>Contenido <span style={{ color: '#9fb0c8', fontSize: 13 }}>( {content.length} / {contentMax} )</span></label>
+            <label style={{ color: '#9fb0c8', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Contenido</span>
+              <span style={{ color: '#9fb0c8', fontSize: 13 }}>( {content.length} / {contentMax} )</span>
+              <button type="button" onClick={() => setShowInfoDialog(true)} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: '#9fb0c8', cursor: 'pointer' }} aria-label="info">ℹ️</button>
+            </label>
             <textarea id="content" className="form-textarea" value={content} onChange={(e) => setContent(e.target.value.slice(0, contentMax))} required />
+
+            {content.length > 520 && (
+              <div style={{ marginTop: 12 }}>
+                <label style={{ color: '#9fb0c8' }}>Reseña <span style={{ color: '#9fb0c8', fontSize: 13 }}>( {resena.length} )</span></label>
+                <textarea id="resena" className="form-textarea" value={resena} onChange={(e) => setResena(e.target.value)} placeholder="Breve reseña para compartir como imagen" />
+              </div>
+            )}
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ color: '#9fb0c8', display: 'block', marginBottom: 6 }}>Etiquetas</label>

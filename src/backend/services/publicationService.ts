@@ -82,13 +82,13 @@ export const getAllPublications = async (author: string, skip: number, limit: nu
         const authorId = await UserModel.find({ $expr: { $regexMatch: { input: { $concat: ['$nombres', ' ', '$apellidos'] }, regex } } }).select('_id').exec();
         console.log('Author search result:', authorId);
         if (authorId && authorId.length > 0) {
-            const publications = await PublicationModel.find({ author: { $in: authorId.map(a => a._id) }, enabled: true, status: 'PUBLICADA' }).populate('author', 'nombres apellidos avatarUrl descripcion').skip(skip).sort({ createdAt: -1 }).limit(limit).exec();
+            const publications = await PublicationModel.find({ author: { $in: authorId.map(a => a._id) }, enabled: true, status: 'PUBLICADA' }).populate('author', 'nombres apellidos avatarUrl descripcion resena').skip(skip).sort({ createdAt: -1 }).limit(limit).exec();
             return publications;
         } else {
             return [];
         }
     } else {
-        const publications = await PublicationModel.find({enabled: true, status: 'PUBLICADA'}).populate('author', 'nombres apellidos avatarUrl descripcion').skip(skip).sort({ createdAt: -1 }).limit(limit).exec()
+        const publications = await PublicationModel.find({enabled: true, status: 'PUBLICADA'}).populate('author', 'nombres apellidos avatarUrl descripcion resena').skip(skip).sort({ createdAt: -1 }).limit(limit).exec()
         return publications
     }
 };
@@ -101,20 +101,20 @@ export const getAllPublicationsToEditor = async (author: string, skip: number, l
         const authorId = await UserModel.find({ $expr: { $regexMatch: { input: { $concat: ['$nombres', ' ', '$apellidos'] }, regex } } }).select('_id').exec();
         console.log('Author search result:', authorId);
         if (authorId && authorId.length > 0) {
-            const publications = await PublicationModel.find({ author: { $in: authorId.map(a => a._id) }, enabled: true, status: { $in: status } }).populate('author', 'nombres apellidos avatarUrl descripcion').skip(skip).sort({ createdAt: -1 }).limit(limit).exec();
+            const publications = await PublicationModel.find({ author: { $in: authorId.map(a => a._id) }, enabled: true, status: { $in: status } }).populate('author', 'nombres apellidos avatarUrl descripcion resena').skip(skip).sort({ createdAt: -1 }).limit(limit).exec();
             return publications;
         } else {
             return [];
         }
     } else {
-        const publications = await PublicationModel.find({enabled: true, status: { $in: status }}).populate('author', 'nombres apellidos avatarUrl descripcion').skip(skip).sort({ createdAt: -1 }).limit(limit).exec()
+        const publications = await PublicationModel.find({enabled: true, status: { $in: status }}).populate('author', 'nombres apellidos avatarUrl descripcion resena').skip(skip).sort({ createdAt: -1 }).limit(limit).exec()
         return publications
     }
 };
 export const findPublicationById = async (id: string) => {
     // el id puede ser el _id de la publicación o el título con guiones (slug), así que intentamos ambos
     try {
-        const pub = await PublicationModel.findById(id).populate('author', 'nombres apellidos avatarUrl descripcion').exec();
+        const pub = await PublicationModel.findById(id).populate('author', 'nombres apellidos avatarUrl descripcion resena').exec();
         if (pub) return pub;
     } catch (e) {
         return null; // no es un id válido, intentamos buscar por slug

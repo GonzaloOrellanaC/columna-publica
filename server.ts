@@ -27,6 +27,8 @@ async function startServer() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
+  console.log(process.env.NODE_ENV === 'production' ? '🚀 Starting in production mode' : '🚧 Starting in development mode');
+
   await connectDB();
   await UserModel.init();
   await ensureRolesExist();
@@ -41,6 +43,7 @@ async function startServer() {
 
   const allowedOrigins = [
     'http://localhost:5107',
+    'http://localhost:5106',
     'https://columnapublica.cl',
     'https://www.columnapublica.cl',
     'https://beta.columnapublica.cl'
@@ -56,7 +59,8 @@ async function startServer() {
     credentials: true,
     optionsSuccessStatus: 204
   }));
-
+  
+  
   // Ensure preflight OPTIONS requests return the proper headers
   app.options('*', cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
@@ -78,19 +82,19 @@ async function startServer() {
   
   // Vite middleware for development
   
-  if (process.env.NODE_ENV !== 'production') {
+  /* if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, port: 5107 },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else { */
     /* app.use(express.static('dist')); */
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
-  }
+  /* } */
 
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
