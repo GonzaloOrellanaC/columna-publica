@@ -35,14 +35,26 @@ async function startServer() {
     console.warn('Could not ensure tags exist:', e);
   }
 
+  const allowedOrigins = [
+    'http://localhost:5107',
+    'https://columnapublica.cl',
+    'https://www.columnapublica.cl',
+    'https://beta.columnapublica.cl'
+  ];
+
   app.use(cors({
-    origin: [
-      'http://localhost:5107',
-      'https://columnapublica.cl',
-      'https://www.columnapublica.cl'
-    ],
-    credentials: true
+    origin: (origin, callback) => {
+      // Allow non-browser tools (curl, server-to-server) when origin is undefined
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: true,
+    optionsSuccessStatus: 204
   }));
+
+  // Ensure preflight OPTIONS requests return the proper headers
+  app.options('*', cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
 
   // Expose `public/` so assets placed there are reachable at /public/<file>
@@ -62,7 +74,7 @@ async function startServer() {
   
   // Vite middleware for development
   
-  if (process.env.NODE_ENV !== 'development') {
+  if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, port: 5107 },
       appType: 'spa',
