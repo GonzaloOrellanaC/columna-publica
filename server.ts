@@ -16,6 +16,7 @@ import testMailRoute from './src/backend/infrastructure/routes/testMailRoutes';
 import tagRoutes from './src/backend/infrastructure/routes/tagRoutes';
 import visitRoutes from './src/backend/infrastructure/routes/visitRoutes';
 import { UserModel } from './src/backend/models/UserModel';
+import path from 'path';
 
 
 async function startServer() {
@@ -81,7 +82,11 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static('dist'));
+    /* app.use(express.static('dist')); */
+    app.use(express.static(path.join(__dirname, 'dist')));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
   }
 
   app.listen(Number(PORT), '0.0.0.0', () => {
