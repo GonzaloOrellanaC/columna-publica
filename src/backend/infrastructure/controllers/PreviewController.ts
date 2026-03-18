@@ -97,7 +97,7 @@ export const renderPublicationPreview = async (req: Request, res: Response) => {
   <meta name="author" content="${escapeHtml(authorName || 'Columna Pública')}" />
   <meta name="robots" content="index,follow" />
   <meta property="og:image:alt" content="${escapeHtml(title)}" />
-  <script>window.location.replace('${escapeJs(req.originalUrl)}');</script>
+  <script>window.location.replace('${escapeJs(origin)}');</script>
 </head>
 <body>
   <p>Redirecting to <a href="${escapeHtml(req.originalUrl)}">${escapeHtml(req.originalUrl)}</a></p>
