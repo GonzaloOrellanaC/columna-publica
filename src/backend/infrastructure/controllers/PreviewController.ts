@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { findPublicationById, findPublicationBySlug } from '../../services/publicationService';
 import { UserModel } from '../../models/UserModel';
+import path from 'path';
 
 function stripHtml(input: string) {
   return input.replace(/<[^>]*>/g, '');
@@ -8,6 +9,19 @@ function stripHtml(input: string) {
 
 export const renderPublicationPreview = async (req: Request, res: Response) => {
   const { id } = req.params;
+  // If the request comes from a regular browser (not a crawler), serve the SPA
+  // so React can render the route client-side. For social crawlers/bots we
+  // return the OG meta preview below.
+  const ua = String(req.get('user-agent') || '');
+  const botRegex = /(facebookexternalhit|Twitterbot|Slackbot|LinkedInBot|WhatsApp|Googlebot|bingbot|discordbot|pinterest|Pinterestbot)/i;
+  if (!botRegex.test(ua)) {
+    // serve SPA index to let React handle the route
+    try {
+      return res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+    } catch (err) {
+      // fallback to continuing to render preview if sending index fails
+    }
+  }
   try {
     let pub: any = null;
     try { pub = await findPublicationById(id); } catch (e) { pub = null; }
