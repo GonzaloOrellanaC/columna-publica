@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;850&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Cinzel", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-navy-50: #f4f6f8;
+  --color-navy-100: #e5e9ef;
+  --color-navy-200: #c6d0df;
+  --color-navy-300: #97abcb;
+  --color-navy-400: #627fb2;
+  --color-navy-500: #3f5f97;
+  --color-navy-600: #304a79;
+  --color-navy-700: #263c62;
+  --color-navy-800: #1b2944;
+  --color-navy-900: #0c2340; /* Official deep navy */
+  --color-navy-950: #061121;
+  
+  --color-gold-50: #fbf8f0;
+  --color-gold-100: #f4ecda;
+  --color-gold-200: #e8d7b3;
+  --color-gold-300: #d6ba82;
+  --color-gold-400: #c19955;
+  --color-gold-500: #ad7f3b;
+  --color-gold-600: #9a6d31;
+  --color-gold-700: #805728;
+  --color-gold-800: #684623;
+  --color-gold-900: #56391f;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #050B14;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Elegant Prose styles for read view */
+.prose-political {
+  font-family: var(--font-sans);
+  line-height: 1.85;
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.prose-political h3 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+}
+
+.prose-political p {
+  margin-bottom: 1.5rem;
+}
+
+/* Scrollbar customizations */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050b14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
