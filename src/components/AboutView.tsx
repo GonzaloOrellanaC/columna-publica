@@ -1,83 +1,149 @@
-import React from 'react';
-import { BookOpen, Award, Scale } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { User, Article } from "../types";
+import { Award, BookOpen, Compass, ShieldCheck, Mail, Users } from "lucide-react";
+import { JoinUsSection } from "./JoinUsSection";
 
 interface AboutViewProps {
-  onNavigateHome: () => void;
+  users: User[];
+  articles: Article[];
 }
 
-export const AboutView: React.FC<AboutViewProps> = ({ onNavigateHome }) => {
+export const AboutView: React.FC<AboutViewProps> = ({ users, articles }) => {
+  const [writerList, setWriterList] = useState<User[]>(users);
+
+  useEffect(() => {
+    if (users && users.length > 0) {
+      setWriterList(users);
+    } else {
+      fetch("/api/users")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.users) {
+            setWriterList(data.users);
+          }
+        })
+        .catch((err) => console.error("Error fetching users in AboutView", err));
+    }
+  }, [users]);
+
+  // Filter active academic writers
+  const activeWriters = writerList.filter(u => u.role === 'admin' || u.role === 'columnist' || u.role === 'editor');
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 text-white font-sans space-y-12">
+    <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 space-y-16">
       
-      {/* 2. Brand summary banner */}
-      <section className="text-center space-y-4">
-        <span className="text-xs font-mono font-bold uppercase tracking-widest text-gold-300">Misión y Principios</span>
-        <h1 className="font-serif text-3xl sm:text-5xl font-black tracking-tight text-white">
-          Línea Editorial de Alto Estándar
-        </h1>
-        <p className="text-sm text-white/75 leading-relaxed max-w-2xl mx-auto italic">
-          "La preservación de la república requiere una voz libre, exenta de sesgo partidista crudo y sustentada en la profundidad de la geografía, la demografía y las reformas racionales."
-        </p>
-      </section>
-
-      {/* Grid: Columns of value */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-        <div className="p-6 bg-white/5 border border-white/10 rounded-lg space-y-3 shadow-md hover:bg-white/10 transition-all">
-          <Scale className="w-8 h-8 text-gold-300" />
-          <h3 className="font-serif text-sm font-bold uppercase text-white">Rigor Académico</h3>
-          <p className="text-xs text-white/70 leading-relaxed">
-            Nuestros columnistas son doctores en derecho constitucional, economistas internacionales y consultores estratégicos de primer nivel.
-          </p>
-        </div>
-
-        <div className="p-6 bg-white/5 border border-white/10 rounded-lg space-y-3 shadow-md hover:bg-white/10 transition-all">
-          <Award className="w-8 h-8 text-rose-400" />
-          <h3 className="font-serif text-sm font-bold uppercase text-white">Soberanía de Datos</h3>
-          <p className="text-xs text-white/70 leading-relaxed">
-            Resguardamos el debate ante la fragmentación de la información a nivel global, brindando un prisma netamente enfocado en el Cono Sur.
-          </p>
-        </div>
-
-        <div className="p-6 bg-white/5 border border-white/10 rounded-lg space-y-3 shadow-md hover:bg-white/10 transition-all">
-          <BookOpen className="w-8 h-8 text-sky-300" />
-          <h3 className="font-serif text-sm font-bold uppercase text-white">Gobernanza Soberana</h3>
-          <p className="text-xs text-white/70 leading-relaxed">
-            Analizamos cómo las macrotendencias globales repercuten e interactúan con la descentralización de las comunidades locales regionales.
-          </p>
-        </div>
-      </section>
-
-      {/* Content explaining how it works */}
-      <section className="bg-[#0A192F]/20 border border-white/10 rounded-xl p-8 space-y-6 shadow-lg backdrop-blur-md">
-        <h2 className="font-serif text-xl font-bold border-b border-white/10 pb-3 uppercase tracking-wider text-white">
-          El Modelo Editorial
+      {/* Title & Core Philosophy */}
+      <div className="text-center space-y-4 max-w-2xl mx-auto">
+        <h2 className="font-cinzel text-3xl font-extrabold tracking-widest text-[#dfba53]">
+          LÍNEA EDITORIAL
         </h2>
+        <div className="h-[2px] w-12 bg-[#dfba53] mx-auto"></div>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400 font-mono">
+          Nuestra Declaración Doctrinaria de la Opinión Soberana
+        </p>
+      </div>
+
+      {/* Grid: Concept details */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="space-y-4 text-xs text-white/80 leading-relaxed">
-          <p>
-            <strong>Columna Pública</strong> opera bajo una estructura de revisión editorial stricto sensu. 
-            Cualquier redactor o columnista invitado posee una base de datos local donde gestiona sus borradores de índole académica. 
-            Una vez finalizados, el borrador es sometido a un riguroso test a través del <strong>Director Supervisor o Super Administrador</strong>.
-          </p>
-          <p>
-            Este rol de Super Administrador (actualmente registrado con el correo <strong>go.orellana.c@gmail.com</strong> bajo la contraseña por defecto <strong>admin123</strong>) 
-            monitorea e inspecciona de forma pormenorizada cada frase, pudiendo aprobar la divulgación del artículo a la portada o devolverlo a borrador si no cumple con las directrices estéticas y técnicas.
-          </p>
-          <p>
-            Alentamos a nuestro selecto público lector a comentar constructivamente las columnas, ingresando sus credenciales de manera transparente a fin de mantener un clima cívico ejemplar.
+        {/* Pilar 1: Rigor Académico */}
+        <div className="bg-[#051122] border border-slate-800 p-6 rounded-xl hover:border-[#dfba53]/35 transition-all space-y-4 shadow-lg">
+          <div className="p-3 bg-[#dfba53]/10 text-[#dfba53] rounded-lg w-fit">
+            <Award className="w-6 h-6" />
+          </div>
+          <h4 className="font-serif text-lg font-bold text-white">Rigor Técnico y Académico</h4>
+          <p className="text-xs text-slate-400 leading-relaxed font-sans">
+            Cada columna publicada pasa por la supervisión de un Editor de Sección. No fomentamos la opinión reactiva inmediata; preferimos disertaciones estructurales con marco conceptual y rigor de excelencia.
           </p>
         </div>
 
-        <div className="pt-4 flex justify-center">
-          <button
-            onClick={onNavigateHome}
-            className="inline-flex items-center px-6 py-2.5 bg-gold-500 hover:bg-gold-400 text-white font-serif font-bold text-xs uppercase tracking-wider rounded-md transition-colors cursor-pointer border border-transparent"
-          >
-            Comenzar Lectura de Columnas
-          </button>
+        {/* Pilar 2: Soberanía */}
+        <div className="bg-[#051122] border border-slate-800 p-6 rounded-xl hover:border-[#dfba53]/35 transition-all space-y-4 shadow-lg">
+          <div className="p-3 bg-[#dfba53]/10 text-[#dfba53] rounded-lg w-fit">
+            <Compass className="w-6 h-6" />
+          </div>
+          <h4 className="font-serif text-lg font-bold text-white">Pensamiento Multipolar</h4>
+          <p className="text-xs text-slate-400 leading-relaxed font-sans">
+            Analizamos la macroeconomía global y las divisas del Cono Sur desde una perspectiva autónoma, promoviendo la soberanía de datos y energética para el reordenamiento del continente.
+          </p>
         </div>
-      </section>
+
+        {/* Pilar 3: Transparencia */}
+        <div className="bg-[#051122] border border-slate-800 p-6 rounded-xl hover:border-[#dfba53]/35 transition-all space-y-4 shadow-lg">
+          <div className="p-3 bg-[#dfba53]/10 text-[#dfba53] rounded-lg w-fit">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h4 className="font-serif text-lg font-bold text-white">Consorcio Técnico Libre</h4>
+          <p className="text-xs text-slate-400 leading-relaxed font-sans">
+            Sustentamos el libre flujo de la pluma. Nuestras fuentes estratégicas son protegidas en base a rigurosos marcos de encriptamiento y descentralización de bases de datos.
+          </p>
+        </div>
+
+      </div>
+
+      {/* Directory of premium authors */}
+      <div className="space-y-8">
+        <div className="border-b border-slate-800 pb-4">
+          <h3 className="font-cinzel text-xl font-bold tracking-wider text-white flex items-center">
+            <Users className="w-5 h-5 mr-2 text-[#dfba53]" />
+            CONSEJO TÉCNICO Y AUTORES COOPERADORES
+          </h3>
+          <p className="text-xs text-slate-400 font-mono">Consorcio oficial registrado en Columna Pública</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {activeWriters.map(writer => {
+            // Count total published columns by this author
+            const numColumns = articles.filter(a => a.authorId === writer.id && a.status === 'published').length;
+
+            return (
+              <div 
+                key={writer.id}
+                className="bg-gradient-to-b from-[#051122] to-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 hover:border-[#dfba53]/30 transition-all shadow-md"
+              >
+                <div className="space-y-4">
+                  {/* Photo Profile */}
+                  <div className="flex items-center space-x-4">
+                    <img 
+                      src={writer.avatar} 
+                      alt={writer.name} 
+                      className="w-14 h-14 rounded-full object-cover border-2 border-[#dfba53]/30"
+                    />
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-serif">{writer.name}</h4>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-[#dfba53]">
+                        {writer.role === 'admin' ? '👑 Director General' : writer.role === 'editor' ? '👓 Editor Senior' : '✒️ Columnista Permanente'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bio biography */}
+                  <p className="text-xs text-slate-300 font-serif leading-relaxed italic line-clamp-3">
+                    "{writer.bio || 'Consorciador académico de ciencias políticas o economía soberanas en opinión internacional.'}"
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-900 flex justify-between items-center text-[10px] font-mono text-slate-500">
+                  <span className="flex items-center space-x-1 text-slate-400">
+                    <BookOpen className="w-3.5 h-3.5 text-[#dfba53]" />
+                    <span>{numColumns} Columnas Publicadas</span>
+                  </span>
+                  
+                  <span className="inline-flex items-center text-slate-500">
+                    <Mail className="w-3 h-3 mr-1" />
+                    {writer.isDemo ? 'perfil-social@dem.cl' : writer.email}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Columnist application invitation and contact form */}
+      <JoinUsSection />
 
     </div>
   );
 };
+export default AboutView;

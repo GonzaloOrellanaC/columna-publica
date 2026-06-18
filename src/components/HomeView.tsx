@@ -1,604 +1,528 @@
-import React from 'react';
-import { Article, User } from '../types';
-import { Clock, Eye, ChevronRight, Newspaper, Bookmark, BookOpen, Users, Globe2, Sparkles, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Article, SiteSettings, ArticleCategory } from "../types";
+import { Search, ChevronRight, Eye, ShieldAlert, Tag, Grid, List, Compass, Sparkles, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { JoinUsSection } from "./JoinUsSection";
 
 interface HomeViewProps {
   articles: Article[];
-  searchQuery: string;
+  settings: SiteSettings;
   onSelectArticle: (articleId: string) => void;
-  onFilterCategory: (category: string) => void;
-  selectedCategory: string;
-  showColumnistsList?: boolean;
-  settings?: any;
+  isLoading: boolean;
+  selectedCategory?: ArticleCategory | "Todo";
+  setSelectedCategory?: (category: ArticleCategory | "Todo") => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   articles,
-  searchQuery,
+  settings,
   onSelectArticle,
-  onFilterCategory,
-  selectedCategory,
-  showColumnistsList = false,
-  settings
+  isLoading,
+  selectedCategory: propCategory,
+  setSelectedCategory: propSetCategory,
 }) => {
-  // Predefined list of columnists from our database setup to display in "Nuestros Columnistas" or filtered views
-  const COLUMNISTS = [
-    {
-      id: "user-marachia",
-      name: "Marachia Elolario",
-      role: "Catedrática y Abogada",
-      bio: "Doctora en Derecho Constitucional, investigadora de gobernanza comparada y políticas de estado.",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150"
-    },
-    {
-      id: "user-cauvia",
-      name: "Cauvia Naman",
-      role: "Analista Internacional y Ex Consejero",
-      bio: "Especialista en relaciones estratégicas del Cono Sur y geopolítica transnacional y minera.",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
-    },
-    {
-      id: "user-aaron",
-      name: "Aarón Garamo",
-      role: "Catedrático de Economía Pública",
-      bio: "Doctor en Economía, consultor fiscal estratégico de organismos multilaterales y desarrollo regional.",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150"
-    }
-  ];
+  const [searchTerm, setSearchTerm] = useState("");
+  const [localCategory, setLocalCategory] = useState<ArticleCategory | "Todo">("Todo");
+  const [layoutMode, setLayoutMode] = useState<'bento' | 'newspaper'>('bento');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isSearchOpenMobile, setIsSearchOpenMobile] = useState(false);
 
-  // Filter current articles by visible status
-  const publishedArticles = articles.filter(a => a.status === 'published');
+  const selectedCategory = propCategory !== undefined ? propCategory : localCategory;
+  const setSelectedCategory = propSetCategory !== undefined ? propSetCategory : setLocalCategory;
 
-  // Filter based on search query or category
-  const filteredArticles = publishedArticles.filter(art => {
-    const matchesSearch = searchQuery
-      ? art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        art.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        art.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        art.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      : true;
+  // Retrieve unique list of tags from published articles
+  const allTags = Array.from(
+    new Set(articles.flatMap(art => art.tags || []))
+  ).slice(0, 10);
 
-    const matchesCategory = selectedCategory
-      ? art.category.toLowerCase() === selectedCategory.toLowerCase()
-      : true;
+  // Retrieve the 3 latest absolute publications from the database
+  const latestThree = [...articles]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
 
-    return matchesSearch && matchesCategory;
+  // Retrieve the latest article for each category
+  const latestByCategory = (["Soberanía Global", "Geopolítica Económica", "Análisis", "Opinión"] as const).map(cat => {
+    const catArticles = articles.filter(art => art.category === cat);
+    const latest = catArticles.length > 0 
+      ? [...catArticles].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      : null;
+    return { category: cat, article: latest };
   });
 
-  const featuredMain = publishedArticles.find(a => a.id === 'art-1') || publishedArticles[0];
-  const sidebarFeatured = publishedArticles.filter(a => a.id !== (featuredMain?.id || ''));
+  // Filter articles
+  const filteredArticles = articles.filter(art => {
+    const matchesSearch =
+      art.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      art.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      art.content.toLowerCase().includes(searchTerm.toLowerCase());
 
-  // Split category specific lists for the double vertical columns at the bottom
-  const soberaniaGlobalPosts = publishedArticles.filter(a => a.category === 'Soberanía Global').slice(0, 3);
-  const geopoliticaEconomicaPosts = publishedArticles.filter(a => a.category === 'Geopolítica Económica').slice(0, 3);
+    const matchesCategory = selectedCategory === "Todo" || art.category === selectedCategory;
+    const matchesTag = !selectedTag || art.tags.includes(selectedTag);
 
-  // Helper date renderer
-  const formatDate = (isoStr: string) => {
-    const date = new Date(isoStr || Date.now());
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
+    return matchesSearch && matchesCategory && matchesTag;
+  });
+
+  // Front featured cover article
+  const featuredArticle = filteredArticles.length > 0 ? filteredArticles[0] : null;
+  const standardArticles = featuredArticle ? filteredArticles.slice(1) : filteredArticles;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
-      
-      {/* Neoclassical CMS Masthead Header Banner detailing dynamic site details */}
-      {!searchQuery && !selectedCategory && !showColumnistsList && (
-        <header className="border-b-2 border-double border-white/20 pb-8 mb-10 text-center relative animate-fadeIn">
-          {/* Dynamic Editorial Alert Ticker banner */}
-          {settings?.alertBannerText && settings.enableDynamicTicker !== false && (
-            <div className="bg-gold-500/10 text-gold-300 border border-gold-500/20 rounded-md py-2 px-4 mb-8 hover:bg-gold-500/15 transition-all text-xs flex items-center justify-center space-x-2.5 max-w-4xl mx-auto">
-              <span className="inline-block w-2 h-2 bg-gold-400 rounded-full animate-ping shrink-0"></span>
-              <span className="font-semibold uppercase tracking-widest font-mono text-[9px] text-gold-400 shrink-0">BOLETÍN EDITORIAL:</span>
-              <span className="italic font-serif text-white/90 leading-snug text-left sm:text-center shrink">{settings.alertBannerText}</span>
+    <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 space-y-12">
+
+      {/* Hero Welcome Section */}
+      <div className="text-center space-y-4 max-w-3xl mx-auto pt-6">
+        <h2 className="font-cinzel text-3xl md:text-5xl font-extrabold tracking-widest leading-tight text-white">
+          {settings.siteName || "COLUMNA PÚBLICA"}
+        </h2>
+        <div className="h-[2px] w-24 bg-[#dfba53] mx-auto my-2"></div>
+        <p className="text-xs md:text-sm font-mono tracking-wider text-[#dfba53] uppercase">
+          {settings.siteSubtitle || "Asuntos Políticos, Macroeconomía e Inserción Global"}
+        </p>
+        <p className="text-xs text-slate-400 font-serif leading-relaxed max-w-xl mx-auto italic">
+          "Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas."
+        </p>
+      </div>
+
+      {/* Desktop Interactive Controls & Navigation bar (Escondido en móvil y tablet) */}
+      <div className="hidden lg:flex lg:flex-row gap-4 justify-between items-center bg-[#051122] border border-slate-800 p-4 rounded-xl">
+        {/* Category Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          {(["Todo", "Soberanía Global", "Geopolítica Económica", "Análisis", "Opinión"] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => {
+                setSelectedCategory(cat);
+                setSelectedTag(null);
+              }}
+              className={`text-xs px-3.5 py-1.5 font-mono tracking-wider rounded transition-all cursor-pointer ${
+                selectedCategory === cat
+                  ? "bg-[#dfba53] text-[#030a16] font-bold shadow shadow-[#dfba53]/20"
+                  : "bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Field */}
+        <div className="relative w-80">
+          <input
+            type="text"
+            placeholder="Buscar columna estratégica o autor..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full text-xs p-2.5 pl-9 bg-slate-950 border border-slate-855 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[#dfba53]"
+          />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+        </div>
+      </div>
+
+      {/* Button with a magnifying glass for Smartphone/Tablet (lg:hidden) */}
+      <div className="lg:hidden flex justify-center">
+        <AnimatePresence mode="wait">
+          {!isSearchOpenMobile && (
+            <motion.button
+              key="search-trigger"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={() => setIsSearchOpenMobile(true)}
+              className="flex items-center justify-center space-x-2 w-12 h-12 bg-gradient-to-r from-[#dfba53] to-[#cfa543] text-[#030a16] rounded-full shadow-lg shadow-[#dfba53]/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title="Buscar y filtrar artículos"
+            >
+              <Search className="w-5 h-5" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Mobile/Tablet Deployable Search & Category Panel with Motion */}
+      <AnimatePresence>
+        {isSearchOpenMobile && (
+          <motion.div
+            key="mobile-search-panel"
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: "auto", scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="lg:hidden bg-[#051122] border border-slate-800 p-5 rounded-xl space-y-4 overflow-hidden relative shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+              <span className="font-mono text-[10px] uppercase text-[#dfba53] font-bold tracking-wider">
+                Filtros y Búsqueda
+              </span>
+              {/* Close Button */}
+              <button
+                onClick={() => setIsSearchOpenMobile(false)}
+                className="p-1 px-2.5 rounded bg-slate-950 border border-slate-800 text-slate-400 hover:text-[#dfba53] transition-colors cursor-pointer flex items-center space-x-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-mono">Cerrar</span>
+              </button>
+            </div>
+
+            {/* Category Filters */}
+            <div className="space-y-1.5">
+              <span className="text-[9px] font-mono uppercase text-slate-500 tracking-wider">Categorías:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {(["Todo", "Soberanía Global", "Geopolítica Económica", "Análisis", "Opinión"] as const).map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setSelectedTag(null);
+                    }}
+                    className={`text-[11px] px-3 py-1 font-mono tracking-wider rounded transition-all cursor-pointer ${
+                      selectedCategory === cat
+                        ? "bg-[#dfba53] text-[#030a16] font-bold shadow shadow-[#dfba53]/20"
+                        : "bg-slate-900 border border-slate-855 text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Field */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[9px] font-mono uppercase text-slate-500 tracking-wider">Término de búsqueda:</span>
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  placeholder="Buscar columna estratégica o autor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full text-xs p-2.5 pl-9 bg-slate-950 border border-slate-855 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[#dfba53]"
+                />
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active filters display */}
+      {selectedTag && (
+        <div className="flex items-center space-x-2 bg-[#dfba53]/10 text-[#dfba53] text-xs px-3 py-1.5 border border-[#dfba53]/25 rounded-md inline-block">
+          <span className="font-mono">Filtro de Etiqueta: #{selectedTag}</span>
+          <button onClick={() => setSelectedTag(null)} className="font-bold hover:text-white ml-2 text-md">×</button>
+        </div>
+      )}
+
+      {/* Loading Indication */}
+      {isLoading ? (
+        <div className="py-20 text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#dfba53] mx-auto"></div>
+          <p className="text-xs font-mono text-slate-400">Analizando archivos de debate editorial...</p>
+        </div>
+      ) : filteredArticles.length === 0 ? (
+        <div className="py-20 text-center space-y-3 bg-[#051122]/50 border border-slate-800 rounded-xl">
+          <p className="text-sm font-mono text-[#dfba53]">No se encontraron artículos publicados en esta sección</p>
+          <p className="text-xs text-slate-400">Pruebe ajustando los términos de búsqueda o deseleccionando la etiqueta activa.</p>
+        </div>
+      ) : (
+        <>
+          {/* Bento Featured Article - The Cover Page */}
+          {featuredArticle && !selectedTag && selectedCategory === "Todo" && searchTerm === "" && (
+            <div 
+              onClick={() => onSelectArticle(featuredArticle.id)}
+              className="group cursor-pointer grid grid-cols-1 lg:grid-cols-12 gap-8 bg-gradient-to-br from-[#051122] to-[#040e1b] border border-[#dfba53]/30 rounded-2xl p-6 md:p-8 hover:border-[#dfba53] transition-all duration-300 shadow-xl relative overflow-hidden mb-8"
+            >
+              {/* Gold light aura */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-[#dfba53]/5 rounded-full blur-3xl pointer-events-none"></div>
+
+              {/* Cover visual representation */}
+              <div className="lg:col-span-7 rounded-xl overflow-hidden relative aspect-video lg:aspect-auto lg:h-[380px]">
+                <img
+                  src={featuredArticle.imageUrl || "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&q=80&w=800"}
+                  alt={featuredArticle.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+                <span className="absolute bottom-4 left-4 inline-flex items-center space-x-1 px-2.5 py-1 bg-[#dfba53] text-[#030a16] text-[9.5px] font-bold tracking-widest rounded uppercase">
+                  <Sparkles className="w-3 h-3 text-[#030a16]" />
+                  <span>EDITORIAL PRINCIPAL</span>
+                </span>
+              </div>
+
+              {/* Cover Typography Details */}
+              <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 text-[10px] font-mono tracking-widest text-[#dfba53] uppercase">
+                    <span>{featuredArticle.category}</span>
+                    <span>·</span>
+                    <span>{new Date(featuredArticle.createdAt).toLocaleDateString("es-CL", { month: "long", day: "numeric" })}</span>
+                  </div>
+
+                  <h3 className="font-serif text-2xl md:text-3xl font-bold leading-tight text-white group-hover:text-[#dfba53] transition-colors">
+                    {featuredArticle.title}
+                  </h3>
+
+                  <p className="text-slate-300 text-xs md:text-sm italic font-serif leading-relaxed line-clamp-3">
+                    {featuredArticle.subtitle}
+                  </p>
+
+                  <p className="text-slate-400 text-xs leading-relaxed font-sans line-clamp-4">
+                    {featuredArticle.content}
+                  </p>
+                </div>
+
+                {/* Author profile and specs */}
+                <div className="border-t border-slate-900 pt-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={featuredArticle.authorAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"}
+                      alt={featuredArticle.authorName}
+                      className="w-8 h-8 rounded-full object-cover border border-[#dfba53]/30"
+                    />
+                    <div>
+                      <h5 className="text-xs font-semibold text-white">{featuredArticle.authorName}</h5>
+                      <p className="text-[9px] text-[#dfba53] font-mono tracking-wider uppercase leading-none">Firma del Consorcio</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4 text-slate-500 font-mono text-[10px]">
+                    <span className="flex items-center space-x-1">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{featuredArticle.views} Lecturas</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[#dfba53]" />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Site Name and Subtitle centered in serif neoclassical type */}
-          <h1 className="font-serif font-extrabold text-4xl sm:text-6xl text-white tracking-tight uppercase leading-none font-display">
-            {settings?.siteName || "Columna Pública"}
-          </h1>
-          <p className="text-xs sm:text-sm font-sans uppercase tracking-[0.25em] text-gold-300/80 mt-4 max-w-3xl mx-auto font-medium">
-            {settings?.siteSubtitle || "Asuntos Políticos, Macroeconomía e Inserción Global"}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-5 text-[10px] text-white/40 font-mono uppercase tracking-wider">
-            <span>Santiago de Chile</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Edición Digital Descentralizada</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="text-gold-300/60 font-semibold">{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-          </div>
-        </header>
-      )}
-
-      {/* 1. Header Banner detailing active filters */}
-      {(searchQuery || selectedCategory || showColumnistsList) && (
-        <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-lg shadow-xl backdrop-blur-md">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-gold-300 font-bold">Filtros Activos</p>
-              <h2 className="text-xl font-serif font-bold text-white mt-1">
-                {showColumnistsList ? "Nuestros Exclusivos Columnistas Políticos" : "Criterio de Búsqueda de Artículos"}
-              </h2>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {searchQuery && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/15 text-white border border-white/5">
-                    Búsqueda: {searchQuery}
-                  </span>
-                )}
-                {selectedCategory && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gold-400/20 text-gold-300 border border-gold-400/30">
-                    Categoría: {selectedCategory}
-                  </span>
-                )}
-                {showColumnistsList && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/5">
-                    Cuerpo Editorial
-                  </span>
-                )}
+          {/* Category Spotlight Section (Permite destacar la última publicación de cada categoría) */}
+          {selectedCategory === "Todo" && !selectedTag && searchTerm === "" && (
+            <div className="space-y-4 mb-10">
+              <div className="flex items-center space-x-2.5">
+                <Compass className="w-5 h-5 text-[#dfba53]" />
+                <h3 className="font-cinzel text-lg md:text-xl font-bold text-white tracking-widest uppercase">
+                  Último de la Editorial por Categoría
+                </h3>
               </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                onFilterCategory('');
-              }}
-              className="mt-4 sm:mt-0 px-4 py-2 border border-white/10 text-xs text-white font-medium hover:bg-white/10 rounded-md transition-colors bg-white/5 cursor-pointer"
-            >
-              Ver Todas las Publicaciones
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Columnists Profile Cards Section (shown when requested) */}
-      {(showColumnistsList) && (
-        <div className="mb-12 border-b border-white/10 pb-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {COLUMNISTS.map(col => (
-              <div 
-                key={col.id} 
-                className="bg-white/5 rounded-lg border border-white/10 p-6 flex flex-col items-center text-center shadow-xl backdrop-blur-md transition-all hover:border-white/20 hover:scale-[1.01] duration-300"
-              >
-                <img 
-                  src={col.avatar} 
-                  alt={col.name} 
-                  className="w-24 h-24 rounded-full object-cover border-2 border-gold-400 mb-4 shadow-md"
-                />
-                <h3 className="font-serif text-lg font-bold text-white">{col.name}</h3>
-                <p className="text-xs font-bold text-gold-300 tracking-wide uppercase mt-1 mb-3">{col.role}</p>
-                <p className="text-xs text-white/70 leading-relaxed italic mb-6">"{col.bio}"</p>
-                
-                <button
-                  onClick={() => {
-                    onFilterCategory(''); // Clear categories
-                    const searchBox = document.querySelector('input[type="text"]') as HTMLInputElement;
-                    if (searchBox) searchBox.value = col.name; 
-                    // Search by column's name
-                    const event = new CustomEvent('filter-columnist', { detail: col.name });
-                    window.dispatchEvent(event);
-                  }}
-                  className="mt-auto inline-flex items-center px-4 py-2 text-xs font-serif text-white hover:bg-white/10 rounded transition-all cursor-pointer border border-white/20 font-medium uppercase tracking-wider bg-transparent"
-                >
-                  <BookOpen className="w-3.5 h-3.5 mr-2 inline" /> Ver Columnas de {col.name.split(' ')[0]}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Hero Feature Slate Grid (Matching first screenshot top block) */}
-      {!searchQuery && !selectedCategory && !showColumnistsList && (
-        <section className="mb-14">
-          {(!settings?.heroLayout || settings.heroLayout === 'editorial') ? (
-            /* EDITORIAL LAYOUT (Bento/Columnar Grid style) */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Big Featured Left Block (art-1) */}
-              {featuredMain && (
-                <div 
-                  id="main-featured"
-                  className="lg:col-span-2 bg-[#0a1220]/50 border border-white/10 rounded-lg overflow-hidden flex flex-col justify-between group shadow-lg transition-all hover:border-white/20"
-                >
-                  <div className="relative aspect-video w-full overflow-hidden bg-[#050B14]">
-                    <img
-                      src={featuredMain.imageUrl}
-                      alt={featuredMain.title}
-                      className="w-full h-full object-cover group-hover:scale-[1.02] transition-all duration-700 ease-out"
-                      referrerPolicy="no-referrer"
-                    />
-                    {/* Category overlay */}
-                    <span className="absolute top-4 left-4 bg-red-650/90 text-white font-mono uppercase text-[10px] font-bold py-1 px-2.5 tracking-widest border border-white/10 rounded-xs">
-                      #{featuredMain.category.toUpperCase().replace(/\s+/g, '_')}
-                    </span>
-                  </div>
-
-                  <div className="p-6 sm:p-8 flex-grow flex flex-col justify-between">
-                    <div>
-                      <h2 
-                        onClick={() => onSelectArticle(featuredMain.id)}
-                        className="font-serif text-2xl sm:text-3xl font-extrabold tracking-tight text-white hover:text-gold-300 cursor-pointer transition-colors leading-tight"
-                      >
-                        {featuredMain.title}
-                      </h2>
-                      <p className="text-sm text-white/70 mt-3 line-clamp-3 leading-relaxed">
-                        {featuredMain.subtitle}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={featuredMain.authorAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
-                          alt={featuredMain.authorName}
-                          className="w-10 h-10 rounded-full object-cover border border-gold-300"
-                        />
-                        <div>
-                          <p className="text-xs font-bold text-white">{featuredMain.authorName}</p>
-                          <p className="text-[10px] text-white/50 font-mono uppercase mt-0.5">{formatDate(featuredMain.createdAt)}</p>
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={() => onSelectArticle(featuredMain.id)}
-                        className="inline-flex items-center px-4 py-2 text-xs font-serif text-white font-extrabold hover:text-gold-300 uppercase tracking-widest cursor-pointer transition-colors"
-                      >
-                        Leer Análisis <ChevronRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-1" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Sidebar Columns (Right side stack) */}
-              <div className="space-y-6">
-                
-                {/* Serious Strategic Widget Header */}
-                <div className="bg-gradient-to-br from-[#0c2340]/90 to-[#061121]/90 text-white p-6 rounded-lg flex flex-col justify-between border border-white/15 h-32 relative overflow-hidden shadow-xl backdrop-blur-md">
-                  <div className="absolute right-0 bottom-0 opacity-10">
-                    <Globe2 className="w-32 h-32 text-white -mr-4 -mb-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-lg font-bold tracking-tight text-gold-300">Resiliencia Democrática</h3>
-                    <p className="text-xs text-white/80 mt-1">El termómetro geopolítico del Cono Sur analizado por los que deciden.</p>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] text-gold-400 tracking-wider uppercase font-mono mt-2">
-                    <span>Edición Limitada</span>
-                    <span>● EN VIVO</span>
-                  </div>
-                </div>
-
-                {/* Sidebar articles */}
-                {sidebarFeatured.slice(0, 2).map(art => (
-                  <div 
-                    key={art.id}
-                    className="bg-white/5 rounded-lg border border-white/10 p-5 hover:border-white/20 transition-all flex flex-col justify-between group backdrop-blur-md"
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {latestByCategory.map(({ category, article }) => (
+                  <div
+                    key={category}
+                    onClick={() => article && onSelectArticle(article.id)}
+                    className={`p-5 rounded-xl border flex flex-col justify-between group transition-all duration-300 relative overflow-hidden ${
+                      article
+                        ? "cursor-pointer bg-gradient-to-b from-[#051122] to-[#040e1b] border-[#dfba53]/20 hover:border-[#dfba53]"
+                        : "bg-[#040c17]/40 border-slate-900 select-none"
+                    }`}
                   >
-                    <div>
-                      {/* Category */}
-                      <div className="flex items-center space-x-1.5 mb-2">
-                        <span className="w-2 h-2 rounded-full bg-gold-400"></span>
-                        <span className="text-[10px] font-bold text-gold-300 uppercase tracking-wide">{art.category}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between font-mono">
+                        <span className="text-[9px] tracking-wider text-[#dfba53] bg-[#dfba53]/10 px-2 py-0.5 rounded border border-[#dfba53]/15 uppercase font-bold">
+                          {category}
+                        </span>
+                        {article && (
+                          <span className="inline-flex items-center bg-red-950/40 text-red-400 border border-red-900/40 rounded text-[8px] font-bold tracking-widest px-1.5 py-0.5 animate-pulse">
+                            SOHO
+                          </span>
+                        )}
                       </div>
 
-                      <h3 
-                        onClick={() => onSelectArticle(art.id)}
-                        className="font-serif text-md font-bold text-white hover:text-gold-300 cursor-pointer transition-colors leading-tight"
-                      >
-                        {art.title}
-                      </h3>
-                      <p className="text-xs text-white/70 mt-2 line-clamp-2 leading-relaxed">
-                        {art.subtitle}
-                      </p>
+                      {article ? (
+                        <div className="space-y-2">
+                          <h4 className="font-serif text-[13px] font-bold text-slate-100 group-hover:text-[#dfba53] transition-colors leading-snug line-clamp-2">
+                            {article.title}
+                          </h4>
+                          <p className="text-slate-400 text-[11px] font-serif italic line-clamp-2 leading-relaxed">
+                            {article.subtitle}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 text-[11px] italic font-serif">
+                          Sin publicaciones recientes en esta sección técnica.
+                        </p>
+                      )}
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-white/50">
-                      <span className="font-bold text-white/80">{art.authorName}</span>
-                      <span className="font-mono text-[9px]">{formatDate(art.createdAt)}</span>
-                    </div>
+                    {article && (
+                      <div className="mt-4 pt-3 border-t border-slate-900 flex items-center justify-between text-[10px]">
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={article.authorAvatar}
+                            alt={article.authorName}
+                            className="w-5 h-5 rounded-full object-cover border border-[#dfba53]/20"
+                          />
+                          <span className="text-slate-400 text-[9px] font-sans truncate max-w-[90px]">
+                            {article.authorName}
+                          </span>
+                        </div>
+                        <span className="text-[#dfba53] font-mono text-[9px] font-bold group-hover:translate-x-1 transition-transform">Leer →</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-
             </div>
-          ) : settings.heroLayout === 'classic' ? (
-            /* CLASSIC CHRONOLOGICAL CHANNELS */
-            <div className="space-y-8 max-w-5xl mx-auto">
-              <div className="bg-white/5 p-3 rounded-lg border border-white/10 uppercase font-mono text-[10px] text-white/50 tracking-wider mb-2 flex items-center justify-between">
-                <span>📰 Flujo de Opinión Clásico</span>
-                <span className="text-gold-400">● {publishedArticles.length} Ediciones</span>
-              </div>
-              {publishedArticles.slice(0, 3).map((art, idx) => (
-                <div 
+          )}
+
+          {/* Main Grid Layout containing articles and sidebar columns */}
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Main content feed column */}
+              <div className="lg:col-span-8 space-y-8">
+                {/* Grid Layout of standard articles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {standardArticles.map(art => (
+                <div
                   key={art.id}
-                  className={`bg-[#0a1220]/30 border border-white/10 rounded-lg overflow-hidden group hover:border-white/20 transition-all flex flex-col md:flex-row shadow-lg ${idx === 0 ? 'border-gold-500/30 ring-1 ring-gold-500/20' : ''}`}
+                  onClick={() => onSelectArticle(art.id)}
+                  className="group cursor-pointer bg-[#051122]/90 border border-slate-800 rounded-xl overflow-hidden hover:border-[#dfba53]/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between shadow-lg"
                 >
-                  <div className="md:w-2/5 aspect-[16/10] md:aspect-auto h-48 md:h-auto overflow-hidden relative">
-                    <img src={art.imageUrl} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" alt={art.title} />
-                    <span className="absolute top-3 left-3 bg-black/85 text-gold-300 font-mono uppercase text-[9px] font-bold py-0.5 px-2 tracking-widest border border-gold-500/20 rounded-xs">
-                      {art.category}
-                    </span>
-                  </div>
-                  <div className="p-6 md:p-8 md:w-3/5 flex flex-col justify-between">
-                    <div>
-                      <h3 onClick={() => onSelectArticle(art.id)} className="font-serif text-xl md:text-2xl font-bold text-white hover:text-gold-300 cursor-pointer line-clamp-2 transition-colors">
-                        {art.title}
-                      </h3>
-                      <p className="text-[11px] text-gold-300 font-bold uppercase tracking-wider mt-1.5 flex items-center">
-                        <img src={art.authorAvatar} alt="" className="w-4 h-4 rounded-full mr-1.5 border border-gold-400" />
-                        Por {art.authorName}
-                      </p>
-                      <p className="text-xs text-white/70 mt-3 leading-relaxed line-clamp-3">{art.subtitle}</p>
+                  <div>
+                    {/* Article Card image */}
+                    <div className="aspect-video relative overflow-hidden bg-slate-950">
+                      <img
+                        src={art.imageUrl}
+                        alt={art.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#051122] via-transparent to-transparent"></div>
+                      <span className="absolute top-3 left-3 px-2 py-0.5 bg-slate-950/80 text-[#dfba53] font-mono text-[9px] uppercase tracking-wider rounded border border-[#dfba53]/20 font-bold">
+                        {art.category}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5 text-[11px] text-white/40">
-                      <span>Publicado el {formatDate(art.createdAt)}</span>
-                      <button onClick={() => onSelectArticle(art.id)} className="text-xs text-white group-hover:text-gold-300 font-bold uppercase tracking-wider flex items-center">
-                        Continuar Lectura <ChevronRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
-                      </button>
+
+                    {/* Card Content details */}
+                    <div className="p-5 space-y-3">
+                      <div className="text-[10px] text-slate-500 font-mono flex items-center justify-between">
+                        <span>{new Date(art.createdAt).toLocaleDateString("es-CL", { year: "numeric", month: "2-digit", day: "2-digit" })}</span>
+                        <span className="flex items-center space-x-1">
+                          <Eye className="w-3 h-3" />
+                          <span>{art.views}</span>
+                        </span>
+                      </div>
+
+                      <h4 className="font-serif text-base font-bold text-slate-100 group-hover:text-[#dfba53] transition-colors leading-snug line-clamp-2">
+                        {art.title}
+                      </h4>
+
+                      <p className="text-slate-400 text-[11px] font-serif italic line-clamp-2 leading-relaxed">
+                        {art.subtitle}
+                      </p>
+
+                      {/* Content preview */}
+                      <p className="text-slate-500 text-[11px] font-sans line-clamp-3 leading-relaxed">
+                        {art.content}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer specs of card */}
+                  <div className="p-5 border-t border-slate-900 flex items-center justify-between bg-slate-950/20">
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={art.authorAvatar}
+                        alt={art.authorName}
+                        className="w-6 h-6 rounded-full object-cover border border-[#dfba53]/25"
+                      />
+                      <span className="text-[10px] font-medium text-slate-300 truncate max-w-[110px]">{art.authorName}</span>
+                    </div>
+
+                    {/* Badges tags */}
+                    <div className="flex items-center space-x-1">
+                      {art.tags.slice(0, 1).map((tag, tIdx) => (
+                        <span
+                          key={tIdx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTag(tag);
+                          }}
+                          className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-900 border border-slate-850 text-slate-400 hover:text-[#dfba53] rounded"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            /* DENSE COMPACT HEADER STREAM STYLE */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="p-3 bg-white/5 border border-white/10 rounded uppercase font-mono text-[9px] text-white/50 tracking-wider flex items-center justify-between">
-                  <span>⚡ Resumen de Cables Rápidos</span>
-                  <span>Últimos {publishedArticles.length} artículos</span>
-                </div>
-                {publishedArticles.map(art => (
-                  <div 
-                    key={art.id}
-                    onClick={() => onSelectArticle(art.id)}
-                    className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all cursor-pointer flex justify-between items-center group"
-                  >
-                    <div className="flex-grow pr-4">
-                      <span className="text-[9px] font-mono font-bold uppercase tracking-wide text-gold-300 bg-gold-400/10 px-1.5 py-0.5 rounded border border-gold-400/20 mr-2">{art.category}</span>
-                      <h4 className="font-serif text-sm font-bold text-white group-hover:text-gold-300 transition-colors inline cursor-pointer leading-tight">{art.title}</h4>
-                      <p className="text-[11px] text-white/50 mt-1">Por <strong className="text-white/70">{art.authorName}</strong> — {formatDate(art.createdAt)}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-gold-300 transition-transform group-hover:translate-x-1 shrink-0" />
-                  </div>
-                ))}
-              </div>
-              
-              <div className="bg-[#0a1220]/40 border border-white/10 p-5 rounded-lg space-y-4 self-start">
-                <div className="flex items-center space-x-2 text-white border-b border-white/10 pb-3">
-                  <TrendingUp className="w-4 h-4 text-gold-300" />
-                  <span className="font-serif text-sm font-bold uppercase tracking-wider">Tendencias de Opinión</span>
-                </div>
-                {publishedArticles.slice(0, 4).map((art, idx) => (
-                  <div key={art.id} onClick={() => onSelectArticle(art.id)} className="flex items-start space-x-3 cursor-pointer group py-1.5">
-                    <span className="font-serif text-xl font-bold text-gold-500/60 group-hover:text-gold-400 pr-1 shrink-0">0{idx + 1}</span>
-                    <div>
-                      <h5 className="text-xs font-bold text-white group-hover:text-gold-300 transition-colors leading-snug line-clamp-2">{art.title}</h5>
-                      <span className="text-[9px] text-white/40">{art.authorName}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          </div>
+
+          {/* Right sticky sidebar column: Only visible in PC view (lg:block) */}
+          <div className="hidden lg:block lg:col-span-4 bg-gradient-to-b from-[#051122] to-[#040e1b] border border-[#dfba53]/15 rounded-xl p-5 space-y-4 self-start sticky top-24 shadow-xl">
+            <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
+              <span className="w-1 h-5 bg-[#dfba53] rounded-full"></span>
+              <h3 className="font-mono text-[11px] uppercase tracking-wider text-[#dfba53] font-bold">
+                Últimas 3 Publicaciones
+              </h3>
             </div>
-          )}
-        </section>
-      )}
-
-      {/* 4. RECENTES ARTICLES bento grid (Recente articles seen in first mockup center) */}
-      <section className="mb-14">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <Newspaper className="w-5 h-5 text-gold-300" />
-            <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-white">
-              {searchQuery || selectedCategory ? "Artículos Filtrados" : "Columnas de Opinión Recientes"}
-            </h2>
-          </div>
-          <span className="text-xs text-white/50 font-mono">{filteredArticles.length} artículos encontrados</span>
-        </div>
-
-        {filteredArticles.length === 0 ? (
-          <div className="text-center py-16 bg-[#0A192F]/20 rounded-lg border border-white/10">
-            <BookOpen className="w-12 h-12 text-white/20 mx-auto mb-3" />
-            <h3 className="font-serif text-lg font-bold text-white">No se encontraron artículos</h3>
-            <p className="text-xs text-white/50 mt-1 max-w-sm mx-auto">Revisa los datos de búsqueda o categoría e intenta nuevamente.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredArticles.map(art => (
-              <article 
-                key={art.id}
-                className="bg-[#0A192F]/20 border border-white/10 rounded-lg overflow-hidden flex flex-col justify-between group hover:border-white/20 transition-all hover:scale-[1.01] hover:shadow-xl"
-              >
-                <div>
-                  <div className="relative aspect-[4/3] overflow-hidden bg-[#050B14]">
-                    <img 
-                      src={art.imageUrl} 
-                      alt={art.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
-                      referrerPolicy="no-referrer"
+            
+            <div className="space-y-4 block">
+              {latestThree.map((art) => (
+                <div
+                  key={art.id}
+                  onClick={() => onSelectArticle(art.id)}
+                  className="group cursor-pointer flex items-start space-x-3 pb-3 border-b border-slate-900 last:border-0 last:pb-0 transition-all hover:opacity-95"
+                >
+                  <div className="w-14 h-14 rounded overflow-hidden flex-shrink-0 bg-slate-950 border border-slate-800">
+                    <img
+                      src={art.imageUrl}
+                      alt={art.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <span className="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-xs text-[9px] font-bold text-white px-2 py-0.5 tracking-wider uppercase border border-white/10 rounded-xs">
+                  </div>
+                  <div className="flex-1 space-y-0.5 min-w-0">
+                    <span className="text-[8px] font-mono uppercase text-[#dfba53] bg-[#dfba53]/5 px-1.5 py-0.2 rounded tracking-wider inline-block">
                       {art.category}
                     </span>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 
-                      onClick={() => onSelectArticle(art.id)}
-                      className="font-serif text-sm font-extrabold leading-snug text-white hover:text-gold-300 cursor-pointer transition-colors line-clamp-2"
-                    >
+                    <h4 className="font-serif text-xs font-bold text-slate-100 group-hover:text-[#dfba53] transition-colors leading-snug line-clamp-2">
                       {art.title}
-                    </h3>
-                    <p className="text-xs text-white/70 mt-2 line-clamp-3 leading-relaxed">
-                      {art.subtitle}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 pt-0">
-                  <div className="border-t border-white/10 pt-3 mt-2 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <img 
-                        src={art.authorAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"} 
-                        alt={art.authorName} 
-                        className="w-6 h-6 rounded-full object-cover border border-gold-300"
-                      />
-                      <span className="text-[10px] font-bold text-white leading-tight block truncate max-w-[90px]">
-                        {art.authorName}
-                      </span>
+                    </h4>
+                    <div className="flex items-center justify-between text-[8px] text-slate-500 font-mono pt-0.5">
+                      <span className="truncate max-w-[80px]">{art.authorName}</span>
+                      <span>{new Date(art.createdAt).toLocaleDateString("es-CL", { month: "short", day: "numeric" })}</span>
                     </div>
-
-                    <span className="text-[9px] text-white/40 font-mono uppercase">
-                      {formatDate(art.createdAt)}
-                    </span>
-                  </div>
-                  
-                  {/* Views indicator */}
-                  <div className="flex items-center space-x-1 mt-2 text-[9px] text-white/40">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{art.views} lecturas</span>
                   </div>
                 </div>
-              </article>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+        </>
+      )}
+
+      {/* Dynamic Tag cloud helper */}
+      {!isLoading && allTags.length > 0 && (
+        <div className="border border-slate-850 bg-[#030d1a] p-6 rounded-xl space-y-3">
+          <h5 className="font-mono text-xs uppercase tracking-wider text-[#dfba53] font-bold flex items-center">
+            <Tag className="w-4 h-4 mr-2" />
+            Vectores de Debate Comunes (Hashtags)
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {allTags.map((tag, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedTag(tag)}
+                className={`text-xs px-3 py-1 font-mono rounded-md border transition-all cursor-pointer ${
+                  selectedTag === tag
+                    ? "bg-[#dfba53] border-[#dfba53] text-[#030a16] font-bold"
+                    : "border-slate-800 text-slate-400 hover:border-[#dfba53]/40 hover:text-[#dfba53] bg-slate-950"
+                }`}
+              >
+                #{tag}
+              </button>
             ))}
           </div>
-        )}
-      </section>
-
-      {/* 5. Specialty Double Columns (Bottom half of first screenshot - Soberanía Global & Geopolítica Económica) */}
-      {!searchQuery && !selectedCategory && !showColumnistsList && (
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 border-t border-white/10 pt-10">
-          
-          {/* Column A: Soberanía Global Posts (Left) - col-span-2 or col-span-3 depending on sidebar configuration */}
-          <div className={`${settings?.enableColumnistSidebar !== false ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
-            <h3 className="font-serif font-bold text-xl text-white border-b border-white/10 pb-3 flex items-center space-x-2">
-              <Globe2 className="w-5 h-5 text-gold-400" />
-              <span>Soberanía Global</span>
-            </h3>
-
-            {soberaniaGlobalPosts.length === 0 ? (
-              <p className="text-xs text-white/40 italic">No hay publicaciones disponibles bajo esta categoría.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {soberaniaGlobalPosts.map(art => (
-                  <div 
-                    key={art.id} 
-                    className="bg-white/5 border border-white/10 rounded-lg p-4 shadow-sm hover:border-white/20 transition-all flex flex-col justify-between group"
-                  >
-                    <div>
-                      <img 
-                        src={art.imageUrl} 
-                        className="w-full h-32 object-cover rounded mb-3 border border-white/5" 
-                        alt="" 
-                      />
-                      <h4 
-                        onClick={() => onSelectArticle(art.id)}
-                        className="font-serif text-sm font-bold text-white hover:text-gold-300 cursor-pointer transition-colors leading-snug"
-                      >
-                        {art.title}
-                      </h4>
-                      <p className="text-xs text-white/70 mt-2 line-clamp-2 leading-relaxed">{art.subtitle}</p>
-                    </div>
-
-                    <div className="flex items-center space-x-2 border-t border-white/5 pt-3 mt-4 text-[10px] text-white/50">
-                      <span className="font-bold text-white/80">{art.authorName}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {settings?.enableColumnistSidebar !== false && (
-            /* Column B: Geopolítica Económica Quick Filters (Right) - col-span-1 */
-            <div className="space-y-6">
-              <h3 className="font-serif font-bold text-xl text-white border-b border-white/10 pb-3 flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-gold-300" />
-                <span>Geopolítica Económica</span>
-              </h3>
-
-              {/* Visual static Quick Filters looking exactly like the buttons on bottom screen 1 */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => onFilterCategory('Soberanía Global')}
-                  className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded bg-[#0c2340] text-gold-300 flex items-center justify-center font-bold text-xs font-serif border border-white/10">
-                      SG
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block leading-tight">Soberanía Global</span>
-                      <span className="text-[10px] text-white/50">Análisis geopolítico unificado</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-1 transition-transform" />
-                </button>
-
-                <button
-                  onClick={() => onFilterCategory('Geopolítica Económica')}
-                  className="w-full flex items-center justify-between p-4 bg-white/15 hover:bg-white/20 border border-white/20 rounded-lg text-left transition-all cursor-pointer group text-white shadow-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded bg-gold-400 text-white flex items-center justify-center font-bold text-xs font-serif border border-white/10">
-                      GE
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-gold-300 block leading-tight">Geopolítica Económica</span>
-                      <span className="text-[10px] text-white/70">Revisión de variables y finanzas</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gold-300 group-hover:translate-x-1 transition-transform" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    onFilterCategory('');
-                    const searchBox = document.querySelector('input[type="text"]') as HTMLInputElement;
-                    if (searchBox) searchBox.value = "economía";
-                    const event = new CustomEvent('filter-columnist', { detail: 'economía' });
-                    window.dispatchEvent(event);
-                  }}
-                  className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded bg-red-800 text-white flex items-center justify-center font-bold text-xs font-serif border border-white/10">
-                      AI
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block leading-tight">Análisis Institucional</span>
-                      <span className="text-[10px] text-white/50">Temáticas puramente institucionales</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-
-              {/* Quick List under right header */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <span className="text-xs font-bold tracking-wider uppercase text-gold-300 block">Temas Críticos Geopolítica Económica</span>
-                {geopoliticaEconomicaPosts.map(art => (
-                  <div 
-                    key={art.id} 
-                    onClick={() => onSelectArticle(art.id)}
-                    className="flex space-x-3 cursor-pointer group border-b border-white/5 pb-3"
-                  >
-                    <img src={art.imageUrl} className="w-14 h-14 object-cover rounded flex-shrink-0 border border-white/5" alt="" />
-                    <div>
-                      <span className="text-xs font-bold text-white group-hover:text-gold-300 transition-colors leading-snug line-clamp-2">
-                        {art.title}
-                      </span>
-                      <span className="text-[9px] text-white/50 block font-mono mt-1">{formatDate(art.createdAt)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          )}
-        </section>
+        </div>
       )}
+
+      {/* Columnist recruitment call to action & Contact application form */}
+      <JoinUsSection />
 
     </div>
   );
 };
+export default HomeView;

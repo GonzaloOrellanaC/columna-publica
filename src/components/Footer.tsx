@@ -1,100 +1,92 @@
-import React from 'react';
-import { Logo } from './Logo';
+import React from "react";
 
-interface FooterProps {
-  onNavigate: (view: 'home' | 'login' | 'dashboard' | 'about', params?: any) => void;
-  onFilterCategory: (cat: any) => void;
-}
-
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onFilterCategory }) => {
+export const Footer: React.FC = () => {
   return (
-    <footer className="bg-black/40 text-white mt-16 border-t border-white/10 backdrop-blur-md font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          
-          {/* Column 1: Logo & Crest */}
-          <div className="space-y-4 col-span-1 md:col-span-2">
-            <div className="flex items-center cursor-pointer" onClick={() => onNavigate('home')}>
-              <Logo light={true} className="h-14 w-auto -ml-3" />
-            </div>
-            <p className="text-xs text-white/50 max-w-sm leading-relaxed">
-              Columna Pública es un foro independiente de opinión y análisis estratégico de alto nivel. 
-              Dedicado a desentrañar las claves geopolíticas, económicas e institucionales del Cono Sur.
-            </p>
+    <footer className="bg-[#020710] border-t border-[#dfba53]/15 text-slate-400 py-12 px-6 md:px-12 mt-20 font-sans">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+        
+        {/* Editorial Manifest */}
+        <div className="md:col-span-2 space-y-4">
+          <h4 className="font-cinzel text-md text-[#dfba53] font-bold tracking-widest">
+            COLUMNA PÚBLICA
+          </h4>
+          <p className="text-xs text-slate-400 font-serif leading-relaxed italic pr-6">
+            "Sostenemos la firme convicción de que la deliberación informada, estructurada sobre los principios de soberanía institucional, macroeconomía científica y un riguroso análisis estratégico, conforma la verdadera columna de sostén para la estabilidad republicana en un orden multilateral multipolar."
+          </p>
+          <div className="font-mono text-[10px] text-slate-500">
+            Dirección General: Santiago de Chile. Año de Fundación 2026.
           </div>
-
-          {/* Column 2: Sections */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-serif font-bold tracking-wider text-gold-300 uppercase">Secciones</h4>
-            <ul className="space-y-2 text-xs text-white/70">
-              <li>
-                <button 
-                  onClick={() => { onFilterCategory('Análisis'); onNavigate('home'); }} 
-                  className="hover:text-gold-300 transition-colors cursor-pointer"
-                >
-                  Análisis Político
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { onFilterCategory('Opinión'); onNavigate('home'); }} 
-                  className="hover:text-gold-300 transition-colors cursor-pointer"
-                >
-                  Tribuna de Opinión
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { onFilterCategory('Soberanía Global'); onNavigate('home'); }} 
-                  className="hover:text-gold-300 transition-colors cursor-pointer"
-                >
-                  Soberanía Global
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { onFilterCategory('Geopolítica Económica'); onNavigate('home'); }} 
-                  className="hover:text-gold-300 transition-colors cursor-pointer"
-                >
-                  Geopolítica Económica
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: Portal */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-serif font-bold tracking-wider text-gold-300 uppercase">Portal</h4>
-            <ul className="space-y-2 text-xs text-white/70">
-              <li>
-                <button onClick={() => onNavigate('home', { showColumnists: true })} className="hover:text-gold-300 transition-colors cursor-pointer">
-                  Nuestros Columnistas
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('about')} className="hover:text-gold-300 transition-colors cursor-pointer">
-                  Editorial y Estándares
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('login')} className="hover:text-gold-300 transition-colors cursor-pointer">
-                  Acceso a Redacción
-                </button>
-              </li>
-            </ul>
-          </div>
-
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-white/5 my-8 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-white/40">
-          <p>© 2025-2026 - Columna Pública. Todos los derechos reservados.</p>
-          <div className="flex space-x-6 mt-4 sm:mt-0">
-            <a href="#" className="hover:text-gold-300 transition-colors">Privacidad Legal</a>
-            <a href="#" className="hover:text-gold-300 transition-colors">Términos de Servicio</a>
+        {/* Categories Quick link mockup */}
+        <div>
+          <h5 className="font-mono text-xs uppercase tracking-wider text-slate-200 font-bold mb-3 border-b border-slate-850 pb-1">
+            Secciones
+          </h5>
+          <ul className="space-y-1 text-xs font-mono">
+            <li><span className="hover:text-gold cursor-pointer transition-colors">Soberanía Global</span></li>
+            <li><span className="hover:text-gold cursor-pointer transition-colors">Geopolítica Económica</span></li>
+            <li><span className="hover:text-gold cursor-pointer transition-colors">Análisis Estratégico</span></li>
+            <li><span className="hover:text-gold cursor-pointer transition-colors">Opinión Republicana</span></li>
+          </ul>
+        </div>
+
+        {/* Corporate specifications */}
+        <div>
+          <h5 className="font-mono text-xs uppercase tracking-wider text-slate-200 font-bold mb-3 border-b border-slate-850 pb-1">
+            Transparencia
+          </h5>
+          <ul className="space-y-1 text-xs text-slate-500">
+            <li>Suscripción Premium Libre</li>
+            <li>Consorcio de Investigadores Libres</li>
+            <li>Consejo Técnico de Redacción</li>
+            <li>Ecosistema Político - Técnico</li>
+          </ul>
+        </div>
+
+      </div>
+
+      {/* Under banner */}
+      <div className="max-w-7xl mx-auto border-t border-slate-900 mt-10 pt-6 flex flex-col md:flex-row justify-between items-start md:items-center text-[10px] text-slate-600 font-mono gap-4">
+        <div className="space-y-1">
+          <div>
+            © 2026 Columna Pública. Todos los derechos estratégicos del debate reservados.
           </div>
+          <div className="text-[9.5px] text-slate-500">
+            Desarrollado con rigor técnico por{" "}
+            <a 
+              href="https://omtecnologia.cl" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-[#dfba53] hover:underline font-bold"
+            >
+              Gonzalo Orellana
+            </a>{" "}
+            — Ingeniero en Computación e Informática (
+            <a href="mailto:proyectos@omtecnologia.cl" className="hover:text-slate-400 transition-colors underline">
+              proyectos@omtecnologia.cl
+            </a>
+            )
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <span>Términos del Ecosistema</span>
+          <span>·</span>
+          <span>Protocolo de Protección de Fuentes</span>
+          <span>·</span>
+          <span>Estándar Editorial</span>
+          <span>·</span>
+          <a 
+            href="https://omtecnologia.cl" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-slate-500 hover:text-[#dfba53] transition-colors font-bold"
+          >
+            OM Tecnología
+          </a>
         </div>
       </div>
     </footer>
   );
 };
+export default Footer;

@@ -1,22 +1,20 @@
+export type UserRole = "admin" | "editor" | "columnist";
+export type ArticleStatus = "published" | "review" | "draft";
+export type ArticleCategory = "Soberanía Global" | "Geopolítica Económica" | "Análisis" | "Opinión" | "General";
+
 export interface User {
   id: string;
   email: string;
+  passwordHash: string;
   name: string;
-  role: 'admin' | 'editor' | 'columnist';
+  role: UserRole;
   bio: string;
   avatar: string;
+  isDemo: boolean;
   createdAt: string;
   blocked?: boolean;
-  isDemo?: boolean;
-}
-
-export interface Comment {
-  id: string;
-  articleId: string;
-  authorName: string;
-  authorEmail?: string;
-  text: string;
-  createdAt: string;
+  resetToken?: string;
+  resetTokenExpires?: string;
 }
 
 export interface Article {
@@ -24,19 +22,26 @@ export interface Article {
   title: string;
   subtitle: string;
   content: string;
-  category: 'Análisis' | 'Opinión' | 'Soberanía Global' | 'Geopolítica Económica' | 'General';
+  category: ArticleCategory;
   imageUrl: string;
-  status: 'draft' | 'review' | 'published';
+  status: ArticleStatus;
   tags: string[];
   authorId: string;
   authorName: string;
-  authorAvatar?: string;
+  authorAvatar: string;
   createdAt: string;
   updatedAt: string;
   views: number;
 }
 
-export type Category = 'Análisis' | 'Opinión' | 'Soberanía Global' | 'Geopolítica Económica' | 'General';
+export interface Comment {
+  id: string;
+  articleId: string;
+  authorName: string;
+  authorEmail: string;
+  content: string;
+  createdAt: string;
+}
 
 export interface SiteSettings {
   siteName: string;
@@ -45,7 +50,26 @@ export interface SiteSettings {
   enableAIAdviser: boolean;
   enableRegistrations: boolean;
   enableShareButtons: boolean;
-  heroLayout: 'classic' | 'dense' | 'editorial';
+  heroLayout: 'editorial' | 'cards' | 'magazine';
   alertBannerText: string;
 }
 
+export interface ColumnistApplication {
+  id: string;
+  name: string;
+  email: string;
+  degree: string;
+  motivation: string;
+  category: ArticleCategory;
+  documentUrl?: string;
+  createdAt: string;
+  status: "pending" | "reviewed";
+}
+
+export interface DatabaseSchema {
+  users: User[];
+  articles: Article[];
+  comments: Comment[];
+  settings: SiteSettings;
+  applications?: ColumnistApplication[];
+}

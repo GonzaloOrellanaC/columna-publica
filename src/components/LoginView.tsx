@@ -1,233 +1,479 @@
-import React, { useState } from 'react';
-import { User } from '../types';
-import { Lock, Mail, ChevronRight, UserCheck, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { User } from "../types";
+import { UserCheck, Shield, KeyRound, Mail, Sparkles, UserPlus, ArrowLeft, Lock } from "lucide-react";
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
-  onBackToHome: () => void;
+  triggerToast: (msg: string, type: "success" | "error" | "info") => void;
+  siteSettings: { enableRegistrations: boolean };
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToHome }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, triggerToast, siteSettings }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Registration states toggle
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regBio, setRegBio] = useState("");
+  const [regAvatar, setRegAvatar] = useState("");
+
+  // Password recovery states
+  const [recoveryToken, setRecoveryToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isForgotMode, setIsForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+
+  // Extract recovery token from URL query params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tok = params.get("recoveryToken");
+    if (tok) {
+      setRecoveryToken(tok);
+      setIsForgotMode(false);
+      setIsRegistering(false);
+    }
+  }, []);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setErrorMsg("Debe rellenar todos los campos obligatorios.");
+      triggerToast("Correo y contraseña son requeridos.", "error");
       return;
     }
 
     setLoading(true);
-    setErrorMsg('');
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (data.success) {
+        triggerToast("¡Bienvenido al Gabinete de Prensa de Columna Pública!", "success");
         onLoginSuccess(data.user);
       } else {
-        setErrorMsg(data.message || "Credenciales incorrectas.");
+        triggerToast("Error: " + data.message, "error");
       }
-    } catch (err) {
-      setErrorMsg("Error de conexión al servidor editorial.");
+    } catch (err: any) {
+      triggerToast("Error de conexión con el portal editorial.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to prefill login for quick testing
-  const handleQuickLogin = (role: 'admin' | 'editor' | 'columnist') => {
-    if (role === 'admin') {
-      setEmail('admin@columnapublica.cl');
-      setPassword('admin123');
-    } else if (role === 'editor') {
-      setEmail('editor@columnapublica.cl');
-      setPassword('columna123');
-    } else {
-      setEmail('cauvia@columnapublica.cl');
-      setPassword('columna123');
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName || !regEmail || !regPassword) {
+      triggerToast("Los campos obligatorios deben ser completados.", "error");
+      return;
     }
-    setErrorMsg('');
+
+    setLoading(true);
+    try {
+      const payload = {
+        email: regEmail,
+        password: regPassword,
+        name: regName,
+        bio: regBio,
+        avatar: regAvatar || `https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150`,
+        role: "columnist"
+      };
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast("Registro formal completado. Inicie sesión ahora.", "success");
+        setEmail(regEmail);
+        setPassword(regPassword);
+        setIsRegistering(false);
+        // Clear reg states
+        setRegName("");
+        setRegEmail("");
+        setRegPassword("");
+        setRegBio("");
+        setRegAvatar("");
+      } else {
+        triggerToast("Fallo el registro: " + data.message, "error");
+      }
+    } catch (err: any) {
+      triggerToast("Error de conexión durante el registro.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Demo user access shortcuts
+  const handleFastlogin = async (demoEmail: string, pass: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: demoEmail, password: pass })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast("Acceso de demostración otorgado.", "success");
+        onLoginSuccess(data.user);
+      } else {
+        triggerToast("Error de Fastlogin: " + data.message, "error");
+      }
+    } catch (err) {
+      triggerToast("Error de conexión en acceso rápido.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      triggerToast("Por favor, ingrese un correo institucional.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message, "success");
+        setIsForgotMode(false);
+        setEmail(forgotEmail);
+      } else {
+        triggerToast("Error: " + data.message, "error");
+      }
+    } catch (err: any) {
+      triggerToast("Error de conexión al intentar recuperar la cuenta.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      triggerToast("Todos los campos son requeridos.", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      triggerToast("Las contraseñas no coinciden.", "error");
+      return;
+    }
+    if (newPassword.length < 6) {
+      triggerToast("La contraseña debe tener al menos 6 caracteres.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: recoveryToken, newPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message, "success");
+        // Clear token from URL without full reload
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        setRecoveryToken("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setIsForgotMode(false);
+      } else {
+        triggerToast("Error: " + data.message, "error");
+      }
+    } catch (err: any) {
+      triggerToast("Error de conexión al reconfigurar acceso.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-[750px] flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 bg-[#0A192F]/25 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl overflow-hidden">
-        
-        {/* Left column: Welcome editorial note and visual quote */}
-        <div className="p-8 sm:p-12 flex flex-col justify-between bg-white/5 border-r border-white/10">
-          <div className="space-y-4">
-            <span className="text-xs font-mono font-bold uppercase text-gold-300 tracking-widest block">Gobernanza Literaria</span>
-            <h2 className="font-serif text-3xl font-extrabold text-white leading-tight">
-              La pluma es la verdadera columna de la república.
-            </h2>
-            <p className="text-xs text-white/70 leading-relaxed">
-              Bienvenido al acceso estratégico para redactores, investigadores de opinión pública y directores de columna.
-              Ingrese para gestionar sus borradores de análisis o dar visto bueno editorial.
+    <div className="max-w-md mx-auto px-6 py-12 space-y-8 font-sans">
+      
+      {/* Visual Header */}
+      <div className="text-center space-y-2">
+        <h2 className="font-cinzel text-xl md:text-2xl font-bold tracking-widest text-[#dfba53]">
+          PORTAL EDITORIAL DE PRENSA
+        </h2>
+        <p className="text-xs font-mono text-slate-400">Gabinete Técnico de Redactores</p>
+        <div className="h-[2px] w-12 bg-[#dfba53]/50 mx-auto mt-2"></div>
+      </div>
+
+      <div className="bg-[#051122] border border-slate-800 rounded-xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+        {/* Decorative gold aura */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#dfba53]/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        {recoveryToken ? (
+          /* RESET PASSWORD FORM */
+          <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+            <h3 className="text-xs font-mono font-bold text-[#dfba53] uppercase border-b border-slate-800 pb-2 flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-[#dfba53]" />
+              Restablecer Contraseña
+            </h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans mb-2">
+              Ingrese su nueva contraseña de acceso institucional.
             </p>
-          </div>
-
-          <div className="mt-8 space-y-4 border-t border-white/10 pt-6">
-            <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest block font-bold">Credenciales de Comprobación Rápida:</span>
-            
-            <div className="grid grid-cols-1 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin')}
-                className="inline-flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left border border-white/10 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-rose-400" />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Acceso Super Admin</span>
-                    <span className="text-[10px] text-white/50">Aprobar, editar, denegar o borrar columnas</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:translate-x-1 transition-transform" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('editor')}
-                className="inline-flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left border border-white/10 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center space-x-2">
-                  <UserCheck className="w-4 h-4 text-amber-300" />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Acceso Editor (Aprobaciones)</span>
-                    <span className="text-[10px] text-white/50 font-sans">Aprobar y publicar columnas, sin gestión general</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:translate-x-1 transition-transform" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('columnist')}
-                className="inline-flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left border border-white/10 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center space-x-2">
-                  <UserCheck className="w-4 h-4 text-emerald-400" />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Acceso Columnista (Cauvia)</span>
-                    <span className="text-[10px] text-white/50">Escribir borradores y enviar a revisión</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-
-            <button
-              onClick={onBackToHome}
-              className="text-xs text-white hover:text-gold-300 underline font-medium cursor-pointer block pt-2 transition-colors"
-            >
-              ← Volver a Lectura de Columnas
-            </button>
-          </div>
-        </div>
-
-        {/* Right column: Solid Navy Login Card */}
-        <div className="bg-[#0c2340]/40 text-white p-8 sm:p-12 flex flex-col justify-center backdrop-blur-md">
-          
-          {/* Classic Architectural Column symbol */}
-          <div className="flex justify-center mb-6">
-            <svg className="w-14 h-14 text-gold-400" viewBox="0 0 100 120" fill="currentColor">
-              <rect x="20" y="20" width="60" height="5" />
-              <rect x="28" y="25" width="44" height="15" />
-              <path d="M 28,25 A 9,9 0 0,0 28,40 A 13,13 0 0,1 28,25 Z" />
-              <path d="M 72,25 A 9,9 0 0,1 72,40 A 13,13 0 0,0 72,25 Z" />
-              <path d="M 23,50 L 77,50 L 72,40 L 28,40 Z" />
-              <rect x="30" y="50" width="8" height="60" />
-              <rect x="46" y="50" width="8" height="60" />
-              <rect x="62" y="50" width="8" height="60" />
-              <rect x="20" y="110" width="60" height="5" />
-            </svg>
-          </div>
-
-          <h3 className="text-center font-serif text-xl font-bold tracking-wider uppercase mb-8 text-white">
-            ACCESO A COLUMNISTAS
-          </h3>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">
-                Correo Electrónico
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  placeholder="redactores@columnapublica.cl"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs bg-white/5 text-white border border-white/10 rounded p-3 pl-10 focus:outline-none focus:border-gold-300 focus:bg-white/10 transition-all font-sans placeholder-white/20"
-                  required
-                />
-                <Mail className="w-4 h-4 text-white/40 absolute left-3 top-3.5" />
-              </div>
-            </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">
-                Contraseña
+              <label className="block text-[10.5px] uppercase tracking-wider text-slate-400 font-mono font-semibold mb-1">
+                Nueva Contraseña *
               </label>
               <div className="relative">
                 <input
                   type="password"
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs bg-white/5 text-white border border-white/10 rounded p-3 pl-10 focus:outline-none focus:border-gold-300 focus:bg-white/10 transition-all font-sans placeholder-white/20"
+                  placeholder="Mínimo 6 caracteres..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#dfba53] font-mono pl-9"
                 />
-                <Lock className="w-4 h-4 text-white/40 absolute left-3 top-3.5" />
+                <KeyRound className="w-4 h-4 text-slate-600 absolute left-3 top-3.5" />
               </div>
             </div>
 
-            {/* Checkbox "Recordarme" and "Olvidó" link */}
-            <div className="flex items-center justify-between text-xs py-2">
-              <button
-                type="button"
-                onClick={() => setRememberMe(!rememberMe)}
-                className="flex items-center space-x-2 text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                {rememberMe ? (
-                  <CheckSquare className="w-4 h-4 text-gold-300" />
-                ) : (
-                  <Square className="w-4 h-4 text-white/20" />
-                )}
-                <span>Recordarme</span>
-              </button>
-
-              <a href="#" className="text-white/60 hover:text-gold-300 transition-colors">
-                ¿Olvidó su contraseña?
-              </a>
+            <div>
+              <label className="block text-[10.5px] uppercase tracking-wider text-slate-400 font-mono font-semibold mb-1">
+                Confirmar Contraseña *
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="Repita la nueva contraseña..."
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#dfba53] font-mono pl-9"
+                />
+                <KeyRound className="w-4 h-4 text-slate-600 absolute left-3 top-3.5" />
+              </div>
             </div>
-
-            {errorMsg && (
-              <p className="text-xs text-red-300 bg-red-950/40 p-2.5 rounded border border-red-500/20 text-center">
-                {errorMsg}
-              </p>
-            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold-500 hover:bg-gold-400 disabled:bg-white/5 text-white font-serif font-bold text-xs py-3.5 rounded transition-all cursor-pointer uppercase tracking-widest shadow-md mt-4 border border-transparent"
+              className="w-full bg-[#dfba53] text-[#030a16] py-2.5 font-bold text-xs uppercase tracking-wider font-mono rounded hover:bg-yellow-400 transition-colors cursor-pointer shadow-md shadow-[#dfba53]/10 grayscale-0 hover:scale-[1.01] active:scale-95 duration-200 transition-all"
             >
-              {loading ? "INICIANDO..." : "INICIAR SESIÓN"}
+              {loading ? "Reconfigurando Clave..." : "Establecer Nueva Contraseña"}
+            </button>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoveryToken("");
+                  const newUrl = window.location.pathname;
+                  window.history.replaceState({}, document.title, newUrl);
+                }}
+                className="inline-flex items-center space-x-1 text-[11px] text-slate-400 hover:text-white"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Volver al Login</span>
+              </button>
+            </div>
+          </form>
+        ) : isForgotMode ? (
+          /* FORGOT PASSWORD FORM */
+          <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+            <h3 className="text-xs font-mono font-bold text-[#dfba53] uppercase border-b border-slate-800 pb-2 flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-[#dfba53]" />
+              Recuperar Contraseña
+            </h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans mb-2">
+              Ingrese su correo institucional registrado. Le enviaremos un enlace seguro para restablecer su clave.
+            </p>
+
+            <div>
+              <label className="block text-[10.5px] uppercase tracking-wider text-slate-400 font-mono font-semibold mb-1">
+                Correo Electrónico *
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="ejemplo@columnapublica.cl"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#dfba53] font-mono pl-9"
+                />
+                <Mail className="w-4 h-4 text-slate-600 absolute left-3 top-3.5" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#dfba53] text-[#030a16] py-2.5 font-bold text-xs uppercase tracking-wider font-mono rounded hover:bg-yellow-400 transition-colors cursor-pointer shadow-md shadow-[#dfba53]/10 duration-200"
+            >
+              {loading ? "Despachando Solicitud..." : "Enviar Enlace Seguro"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsForgotMode(false)}
+              className="w-full text-center text-xs text-slate-400 hover:text-white pt-2 font-mono flex items-center justify-center gap-1 hover:underline"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              Volver al Inicio de Sesión
             </button>
           </form>
+        ) : !isRegistering ? (
+          /* LOGIN FORM */
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10.5px] uppercase tracking-wider text-slate-400 font-mono font-semibold mb-1">
+                Correo Institucional *
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="ejemplo@columnapublica.cl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#dfba53] font-mono pl-9"
+                />
+                <Mail className="w-4 h-4 text-slate-600 absolute left-3 top-3.5" />
+              </div>
+            </div>
 
-        </div>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[10.5px] uppercase tracking-wider text-slate-400 font-mono font-semibold">
+                  Contraseña Segura *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotMode(true)}
+                  className="text-[10.5px] text-[#dfba53] hover:underline font-mono"
+                >
+                  ¿Olvidó su clave?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="Contraseña del gabinete..."
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#dfba53] font-mono pl-9"
+                />
+                <KeyRound className="w-4 h-4 text-slate-600 absolute left-3 top-3.5" />
+              </div>
+            </div>
 
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#dfba53] text-[#030a16] py-2.5 font-bold text-xs uppercase tracking-wider font-mono rounded hover:bg-yellow-400 transition-colors cursor-pointer shadow-md shadow-[#dfba53]/10"
+            >
+              {loading ? "Verificando Credenciales..." : "Iniciar Sesión"}
+            </button>
+
+
+          </form>
+        ) : (
+          /* REGISTRATION FORM */
+          <form onSubmit={handleRegisterSubmit} className="space-y-3">
+            <h3 className="text-xs font-mono font-bold text-[#dfba53] uppercase border-b border-slate-850 pb-1 flex items-center">
+              <UserPlus className="w-4 h-4 mr-1" /> Registro de Autor Cooperador
+            </h3>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-mono font-semibold">Nombre Completo *</label>
+              <input
+                type="text"
+                placeholder="Dr. César Calderón"
+                required
+                value={regName}
+                onChange={(e) => setRegName(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded text-white focus:outline-none focus:border-[#dfba53]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-mono font-semibold">Correo Electrónico *</label>
+              <input
+                type="email"
+                placeholder="cesar@columnapublica.cl"
+                required
+                value={regEmail}
+                onChange={(e) => setRegEmail(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded font-mono text-white focus:outline-none focus:border-[#dfba53]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-mono font-semibold">Contraseña Inicial *</label>
+              <input
+                type="password"
+                placeholder="Escriba contraseña segura..."
+                required
+                value={regPassword}
+                onChange={(e) => setRegPassword(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded font-mono text-white focus:outline-none focus:border-[#dfba53]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-mono font-semibold">URL del Avatar (Foto de Perfil)</label>
+              <input
+                type="text"
+                placeholder="https://images.unsplash.com/..."
+                value={regAvatar}
+                onChange={(e) => setRegAvatar(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded font-mono text-white focus:outline-none focus:border-[#dfba53]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-mono font-semibold">Biografía / Línea Profesional</label>
+              <textarea
+                placeholder="Ej. Economista especializado en políticas públicas..."
+                rows={2}
+                value={regBio}
+                onChange={(e) => setRegBio(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded text-white focus:outline-none focus:border-[#dfba53]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setIsRegistering(false)}
+                className="w-1/2 p-2 bg-slate-900 hover:bg-slate-850 rounded text-slate-300 font-mono"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="w-1/2 p-2 bg-[#dfba53] text-[#030a16] rounded font-mono font-semibold"
+              >
+                Completar Registro
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
 };
+export default LoginView;

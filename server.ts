@@ -1,155 +1,166 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import { Database } from "./src/db/db";
-import { connectMongoDB, isMongoDbConnected, MongoArticle, MongoUser } from "./src/db/mongodb";
-import { GoogleGenAI } from "@google/genai";
-import dotenv from "dotenv";
+import cors from "cors";
 import fs from "fs";
 import multer from "multer";
+import dotenv from "dotenv";
+import { createServer as createViteServer } from "vite";
+import { Database, hashPassword } from "./src/db/db";
+import { connectMongoDB, isMongoDbConnected, MongoUser, MongoArticle, MongoComment, MongoSettings, MongoApplication } from "./src/db/mongodb";
+import { sendWelcomeEmail, sendApplicationEmail, sendRecoveryEmail } from "./src/utils/mailer";
+import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
+const isProd = process.env.NODE_ENV === "production";
 const app = express();
-const PORT = 3000;
+const port = 3000; // Hardcoded by platform
 
-// Create public upload folders symmetrically
-const DIR_IMAGES = path.join(process.cwd(), "public", "uploads", "images");
-const DIR_DOCUMENTS = path.join(process.cwd(), "public", "uploads", "documents");
-const DIR_AVATARS = path.join(process.cwd(), "public", "uploads", "avatars");
+// Configure local storage and uploads
+if (!fs.existsSync("./uploads")) {
+  fs.mkdirSync("./uploads");
+}
 
-fs.mkdirSync(DIR_IMAGES, { recursive: true });
-fs.mkdirSync(DIR_DOCUMENTS, { recursive: true });
-fs.mkdirSync(DIR_AVATARS, { recursive: true });
-
-// Initialize Database (Seeds Super Admins and default articles)
-Database.initialize();
-
-// Initialize MongoDB via Mongoose connection
-connectMongoDB();
-
-
-// Middlewares
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use('/public', express.static(path.join(process.cwd(), 'public')));
-
-// Configure Multer engine
-const uploadStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (file.fieldname === "image") {
-      cb(null, DIR_IMAGES);
-    } else if (file.fieldname === "document") {
-      cb(null, DIR_DOCUMENTS);
-    } else if (file.fieldname === "avatar") {
-      cb(null, DIR_AVATARS);
-    } else {
-      cb(new Error("Campo de archivo no válido"), "");
-    }
+    cb(null, "./uploads/");
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const basename = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, "_");
-    cb(null, `${basename}_${Date.now()}${ext}`);
+    cb(null, `${file.fieldname}-${Date.now()}${ext}`);
   }
 });
+const upload = multer({ storage });
 
-const upload = multer({ storage: uploadStorage });
+app.use(cors());
+app.use(express.json());
+app.use("/uploads", express.static("./uploads"));
 
-// --- API Endpoint definitions ---
+// Initialize local database on startup
+Database.init();
 
-// Upload API Endpoints
-app.post("/api/upload/image", upload.single("image"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No se proporcionó ninguna imagen." });
+// Attempt connection to MongoDB if URI is present
+connectMongoDB().catch(err => {
+  console.log("[MongoDB Setup Error] Fallback to JSON Database.", err.message);
+});
+
+// Configure GoogleGenAI shared client for editorial AI Advisory
+let aiClient: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI | null {
+  if (!aiClient && process.env.GEMINI_API_KEY) {
+    aiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-  const fileUrl = `/public/uploads/images/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl });
+  return aiClient;
+}
+
+// ======================== API ENDPOINTS ========================
+
+// 1. Image and File upload helpers
+app.post("/api/upload/image", upload.single("image"), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: "No se subió ningún archivo" });
+  res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
 
 app.post("/api/upload/document", upload.single("document"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No se proporcionó ningún documento." });
-  }
-  const fileUrl = `/public/uploads/documents/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl, name: req.file.originalname });
+  if (!req.file) return res.status(400).json({ success: false, message: "No se subió ningún archivo" });
+  res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
 
 app.post("/api/upload/avatar", upload.single("avatar"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No se proporcionó ningún avatar." });
-  }
-  const fileUrl = `/public/uploads/avatars/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl });
+  if (!req.file) return res.status(400).json({ success: false, message: "No se subió ningún archivo" });
+  res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
 
-// Auth endpoints
+// 2. Authentication Login
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Correo y contraseña son requeridos." });
+    return res.status(400).json({ success: false, message: "Correo y contraseña son requeridos" });
   }
+
+  const cleanEmail = email.toLowerCase();
+  const incomingHash = hashPassword(password);
 
   if (isMongoDbConnected()) {
     try {
-      const user = await MongoUser.findOne({ email: email.toLowerCase() });
-      if (user) {
-        const incomingHash = Buffer.from(password + 'columna_salt_2026').toString('base64');
-        if (user.passwordHash === incomingHash) {
-          if (user.blocked) {
-            return res.status(403).json({ success: false, message: "Su cuenta ha sido bloqueada temporalmente por el Súper Administrador." });
-          }
-          const userSession = {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            bio: user.bio,
-            avatar: user.avatar,
-            blocked: user.blocked || false,
-            isDemo: user.isDemo || false,
-            createdAt: user.createdAt
-          };
-          return res.json({ success: true, user: userSession });
-        }
+      const user = await MongoUser.findOne({ email: cleanEmail });
+      if (!user) {
+        return res.status(401).json({ success: false, message: "Credenciales de acceso inválidas." });
       }
-      return res.status(401).json({ success: false, message: "Credenciales de acceso inválidas." });
+      if (user.passwordHash !== incomingHash) {
+        return res.status(401).json({ success: false, message: "Credenciales de acceso inválidas." });
+      }
+      if (user.blocked) {
+        return res.status(403).json({ success: false, message: "Su cuenta se encuentra suspendida temporalmente." });
+      }
+
+      return res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          bio: user.bio,
+          avatar: user.avatar,
+          createdAt: user.createdAt
+        }
+      });
     } catch (err: any) {
-      console.warn("[MongoDB] Error de autenticación en Mongo, usando respaldo JSON:", err.message);
+      console.error("[MongoDB Login Error] Fallback triggered", err.message);
     }
   }
 
-  const authenticatedUser = Database.verifyCredentials(email, password);
-  if (!authenticatedUser) {
+  // Fallback to local DB
+  const user = Database.data.users.find(u => u.email.toLowerCase() === cleanEmail);
+  if (!user || user.passwordHash !== incomingHash) {
     return res.status(401).json({ success: false, message: "Credenciales de acceso inválidas." });
   }
-
-  if (authenticatedUser.blocked) {
-    return res.status(403).json({ success: false, message: "Su cuenta ha sido bloqueada temporalmente por el Súper Administrador." });
+  if (user.blocked) {
+    return res.status(403).json({ success: false, message: "Su cuenta se encuentra suspendida temporalmente." });
   }
 
-  // Exclude passwordHash in output
-  const { passwordHash, ...userSession } = authenticatedUser;
-  res.json({ success: true, user: userSession });
+  return res.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      bio: user.bio,
+      avatar: user.avatar,
+      createdAt: user.createdAt
+    }
+  });
 });
 
+// 3. User Register (Self registration)
 app.post("/api/auth/register", async (req, res) => {
   const { email, password, name, role, bio, avatar } = req.body;
   if (!email || !password || !name) {
-    return res.status(400).json({ success: false, message: "Correo, contraseña y nombre completo son requeridos." });
+    return res.status(400).json({ success: false, message: "Correo, contraseña y nombre son requeridos." });
   }
+
+  const cleanEmail = email.toLowerCase();
 
   if (isMongoDbConnected()) {
     try {
-      const existingUser = await MongoUser.findOne({ email: email.toLowerCase() });
+      const existingUser = await MongoUser.findOne({ email: cleanEmail });
       if (existingUser) {
         return res.status(400).json({ success: false, message: "El correo electrónico ya se encuentra registrado." });
       }
       const newId = "user-" + Math.random().toString(36).substring(2, 11);
-      const incomingHash = Buffer.from(password + 'columna_salt_2026').toString('base64');
+      const incomingHash = hashPassword(password);
       const newUserDoc = new MongoUser({
         id: newId,
-        email: email.toLowerCase(),
+        email: cleanEmail,
         passwordHash: incomingHash,
         name,
         role: role || 'columnist',
@@ -158,8 +169,219 @@ app.post("/api/auth/register", async (req, res) => {
         createdAt: new Date().toISOString()
       });
       await newUserDoc.save();
-      
-      const userSession = {
+
+      return res.status(201).json({
+        success: true,
+        user: {
+          id: newUserDoc.id,
+          email: newUserDoc.email,
+          name: newUserDoc.name,
+          role: newUserDoc.role,
+          bio: newUserDoc.bio,
+          avatar: newUserDoc.avatar,
+          createdAt: newUserDoc.createdAt
+        }
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // Local JSON DB logic
+  try {
+    const newUser = Database.createUser(email, password, name, role || 'columnist', bio, avatar);
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        bio: newUser.bio,
+        avatar: newUser.avatar,
+        createdAt: newUser.createdAt
+      }
+    });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// 15. Password Recovery - Step 1: Send Recovery Link with Token
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "El correo electrónico es requerido." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const token = "tok-" + Math.random().toString(36).substring(2, 11) + Math.random().toString(36).substring(2, 11);
+  const expiration = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour validity
+
+  let targetUser: any = null;
+
+  if (isMongoDbConnected()) {
+    try {
+      targetUser = await MongoUser.findOne({ email: cleanEmail });
+      if (targetUser) {
+        targetUser.resetToken = token;
+        targetUser.resetTokenExpires = expiration;
+        await targetUser.save();
+      }
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  } else {
+    targetUser = Database.data.users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (targetUser) {
+      targetUser.resetToken = token;
+      targetUser.resetTokenExpires = expiration;
+      Database.persist();
+    }
+  }
+
+  // To protect user privacy, we act as if the process succeeds regardless of email presence.
+  if (targetUser) {
+    const origin = req.headers.origin || `http://${req.headers.host}` || "https://columnapublica.cl";
+    const resetLink = `${origin}/login?recoveryToken=${token}`;
+
+    sendRecoveryEmail({
+      email: targetUser.email,
+      name: targetUser.name,
+      resetLink
+    }).catch(err => {
+      console.error("[Email Notification Error] Falló el correo de recuperación:", err);
+    });
+  }
+
+  return res.json({ 
+    success: true, 
+    message: "Si el correo electrónico se encuentra registrado en nuestro sistema, recibirá un mensaje con las instrucciones de restablecimiento en breve." 
+  });
+});
+
+// 16. Password Recovery - Step 2: Set New Password with valid Token
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ success: false, message: "El token de recuperación y la nueva contraseña son requeridos." });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: "La contraseña debe tener al menos 6 caracteres." });
+  }
+
+  const hashed = hashPassword(newPassword);
+  let userUpdated = false;
+
+  if (isMongoDbConnected()) {
+    try {
+      const user = await MongoUser.findOne({ resetToken: token });
+      if (user) {
+        const expiresAt = user.resetTokenExpires ? new Date(user.resetTokenExpires).getTime() : 0;
+        if (expiresAt > Date.now()) {
+          user.passwordHash = hashed;
+          user.resetToken = "";
+          user.resetTokenExpires = "";
+          await user.save();
+          userUpdated = true;
+        }
+      }
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  } else {
+    // Local JSON Db
+    const user = Database.data.users.find(u => u.resetToken === token);
+    if (user) {
+      const expiresAt = user.resetTokenExpires ? new Date(user.resetTokenExpires).getTime() : 0;
+      if (expiresAt > Date.now()) {
+        user.passwordHash = hashed;
+        user.resetToken = "";
+        user.resetTokenExpires = "";
+        Database.persist();
+        userUpdated = true;
+      }
+    }
+  }
+
+  if (!userUpdated) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "El enlace de recuperación es inválido o ha expirado. Por favor, solicite uno nuevo." 
+    });
+  }
+
+  return res.json({ success: true, message: "Su contraseña ha sido reconfigurada exitosamente. Ahora puede iniciar sesión con sus nuevas credenciales." });
+});
+
+// 4. Users list (Super Admin panel)
+app.get("/api/users", async (req, res) => {
+  if (isMongoDbConnected()) {
+    try {
+      const users = await MongoUser.find({});
+      const sanitized = users.map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        bio: u.bio,
+        avatar: u.avatar,
+        createdAt: u.createdAt,
+        blocked: u.blocked,
+        isDemo: u.isDemo
+      }));
+      return res.json({ success: true, users: sanitized });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  // Local JSON Fallback
+  const sanitized = Database.data.users.map(u => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    bio: u.bio,
+    avatar: u.avatar,
+    createdAt: u.createdAt,
+    blocked: u.blocked,
+    isDemo: u.isDemo
+  }));
+  return res.json({ success: true, users: sanitized });
+});
+
+// 5. Create user explicitly by Admin - SENT WELCOME EMAIL (NODEMAILER INTEGRATION)
+app.post("/api/users", async (req, res) => {
+  const { email, password, name, role, bio, avatar } = req.body;
+  if (!email || !password || !name) {
+    return res.status(400).json({ success: false, message: "Correo, contraseña y nombre completo son requeridos." });
+  }
+
+  const cleanEmail = email.toLowerCase();
+  let createdUser: any = null;
+
+  if (isMongoDbConnected()) {
+    try {
+      const existingUser = await MongoUser.findOne({ email: cleanEmail });
+      if (existingUser) {
+        return res.status(400).json({ success: false, message: "El correo electrónico ya se encuentra registrado." });
+      }
+      const newId = "user-" + Math.random().toString(36).substring(2, 11);
+      const incomingHash = hashPassword(password);
+      const newUserDoc = new MongoUser({
+        id: newId,
+        email: cleanEmail,
+        passwordHash: incomingHash,
+        name,
+        role: role || 'columnist',
+        bio: bio || "",
+        avatar: avatar || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150`,
+        createdAt: new Date().toISOString()
+      });
+      await newUserDoc.save();
+      createdUser = {
         id: newUserDoc.id,
         email: newUserDoc.email,
         name: newUserDoc.name,
@@ -168,40 +390,35 @@ app.post("/api/auth/register", async (req, res) => {
         avatar: newUserDoc.avatar,
         createdAt: newUserDoc.createdAt
       };
-      return res.status(201).json({ success: true, user: userSession });
     } catch (err: any) {
-      console.warn("[MongoDB] Error al registrar usuario, usando respaldo JSON:", err.message);
+      console.warn("[MongoDB] Error saving admin-created user", err.message);
     }
   }
 
-  try {
-    const newUser = Database.createUser(email, password, name, role || 'columnist', bio, avatar);
-    const { passwordHash, ...userSession } = newUser;
-    res.status(201).json({ success: true, user: userSession });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message || "Error al registrar el usuario." });
-  }
-});
-
-// Users endpoints
-app.get("/api/users", async (req, res) => {
-  if (isMongoDbConnected()) {
+  if (!createdUser) {
     try {
-      const list = await MongoUser.find({}, { passwordHash: 0 });
-      return res.json({ success: true, users: list });
-    } catch (err: any) {
-      console.warn("[MongoDB] Error listando usuarios, usando respaldo JSON:", err.message);
+      const newUser = Database.createUser(email, password, name, role || 'columnist', bio, avatar);
+      const { passwordHash, ...userSession } = newUser;
+      createdUser = userSession;
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message || "Error al crear el usuario." });
     }
   }
 
-  try {
-    const list = Database.getUsers().map(({ passwordHash, ...safeUser }) => safeUser);
-    res.json({ success: true, users: list });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+  // Trigger non-blocking welcome email sending
+  sendWelcomeEmail({
+    email: cleanEmail,
+    name,
+    role: role || 'columnist',
+    passwordClearText: password
+  }).catch(e => {
+    console.error("[SMTP Notification] Error in asynchronous welcome email delivery:", e);
+  });
+
+  return res.status(201).json({ success: true, user: createdUser });
 });
 
+// 6. Update user metadata / suspend / password change
 app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   const { name, bio, avatar, role, password, blocked } = req.body;
@@ -209,258 +426,236 @@ app.put("/api/users/:id", async (req, res) => {
   if (isMongoDbConnected()) {
     try {
       const user = await MongoUser.findOne({ id });
-      if (user) {
-        if (name !== undefined) user.name = name;
-        if (bio !== undefined) user.bio = bio;
-        if (avatar !== undefined) user.avatar = avatar;
-        if (role !== undefined) user.role = role;
-        if (blocked !== undefined) {
-          user.blocked = blocked;
-        }
-        if (password !== undefined && password !== "") {
-          const incomingHash = Buffer.from(password + 'columna_salt_2026').toString('base64');
-          user.passwordHash = incomingHash;
-        }
-        await user.save();
-        const safeUser = {
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Usuario no encontrado." });
+      }
+
+      if (name !== undefined) user.name = name;
+      if (bio !== undefined) user.bio = bio;
+      if (avatar !== undefined) user.avatar = avatar;
+      if (role !== undefined) user.role = role;
+      if (blocked !== undefined) user.blocked = blocked;
+      if (password) {
+        user.passwordHash = hashPassword(password);
+      }
+
+      await user.save();
+      return res.json({
+        success: true,
+        user: {
           id: user.id,
-          email: user.email,
           name: user.name,
+          email: user.email,
           role: user.role,
           bio: user.bio,
           avatar: user.avatar,
-          blocked: user.blocked || false,
-          createdAt: user.createdAt
-        };
-        return res.json({ success: true, user: safeUser });
-      }
-    } catch (err: any) {
-      console.warn("[MongoDB] Error actualizando usuario, usando respaldo JSON:", err.message);
+          blocked: user.blocked
+        }
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  try {
-    const updates: any = {};
-    if (name !== undefined) updates.name = name;
-    if (bio !== undefined) updates.bio = bio;
-    if (avatar !== undefined) updates.avatar = avatar;
-    if (role !== undefined) updates.role = role;
-    if (blocked !== undefined) updates.blocked = blocked;
-    if (password !== undefined && password !== "") {
-      const incomingHash = Buffer.from(password + 'columna_salt_2026').toString('base64');
-      updates.passwordHash = incomingHash;
-    }
-
-    const updated = Database.updateUser(id, updates);
-    const { passwordHash, ...safeUser } = updated;
-    res.json({ success: true, user: safeUser });
-  } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+  // Local JSON fallback
+  const user = Database.data.users.find(u => u.id === id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: "Usuario no encontrado." });
   }
+
+  if (name !== undefined) user.name = name;
+  if (bio !== undefined) user.bio = bio;
+  if (avatar !== undefined) user.avatar = avatar;
+  if (role !== undefined) user.role = role;
+  if (blocked !== undefined) user.blocked = blocked;
+  if (password) {
+    user.passwordHash = hashPassword(password);
+  }
+
+  Database.persist();
+
+  return res.json({
+    success: true,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      bio: user.bio,
+      avatar: user.avatar,
+      blocked: user.blocked
+    }
+  });
 });
 
+// 7. Delete User (Cannot delete super-primary)
 app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-
-  // Check if target user is a super admin ('admin' role)
-  let targetRole = "";
-  if (isMongoDbConnected()) {
-    try {
-      const u = await MongoUser.findOne({ id });
-      if (u) {
-        targetRole = u.role;
-      }
-    } catch (_) {}
-  }
-  if (!targetRole) {
-    const u = Database.getUserById(id);
-    if (u) {
-      targetRole = u.role;
-    }
-  }
-
-  if (targetRole === "admin") {
-    return res.status(430).json({ success: false, message: "No está permitido eliminar a cuentas de Súper Administrador por motivos de seguridad." });
+  if (id === "user-super-primary") {
+    return res.status(403).json({ success: false, message: "No es posible eliminar el Súper Administrador primario de la plataforma." });
   }
 
   if (isMongoDbConnected()) {
     try {
       const result = await MongoUser.deleteOne({ id });
-      if (result.deletedCount && result.deletedCount > 0) {
-        return res.json({ success: true, message: "Usuario eliminado exitosamente de MongoDB." });
-      } else {
-        return res.status(404).json({ success: false, message: "Usuario no encontrado en base de datos." });
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ success: false, message: "Usuario no encontrado." });
       }
-    } catch (err: any) {
-      console.warn("[MongoDB] Error eliminando usuario en Mongo, usando respaldo JSON:", err.message);
+      return res.json({ success: true, message: "Usuario desvinculado con éxito." });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  try {
-    const deleted = Database.deleteUser(id);
-    if (deleted) {
-      res.json({ success: true, message: "Usuario eliminado exitosamente del archivo JSON." });
-    } else {
-      res.status(404).json({ success: false, message: "Usuario no encontrado." });
-    }
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  const idx = Database.data.users.findIndex(u => u.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ success: false, message: "Usuario no encontrado" });
   }
+  Database.data.users.splice(idx, 1);
+  Database.persist();
+  return res.json({ success: true, message: "Usuario desvinculado con éxito." });
 });
 
-// Articles endpoints
+
+// 8. Editorial Articles Endpoints (List, Read, Create, Edit, Delete)
 app.get("/api/articles", async (req, res) => {
-  const authorId = req.query.authorId as string | undefined;
-  const includeDrafts = req.query.includeDrafts === "true";
-  const isDemoPath = req.query.isDemoPath === "true";
-  
+  const { includeDrafts, category, authorId } = req.query;
+
   if (isMongoDbConnected()) {
     try {
       const query: any = {};
-      if (!includeDrafts) {
+      if (includeDrafts !== "true") {
         query.status = "published";
+      }
+      if (category) {
+        query.category = category;
       }
       if (authorId) {
         query.authorId = authorId;
       }
-
-      if (!isDemoPath) {
-        // Exclude publications of all demo users
-        const demoUsers = await MongoUser.find({ isDemo: true }, { id: 1 });
-        const demoUserIds = demoUsers.map(u => u.id);
-        const hardcodedDemoIds = ["user-marachia", "user-cauvia", "user-aaron", "user-editor-demo"];
-        const allExcludeIds = Array.from(new Set([...demoUserIds, ...hardcodedDemoIds]));
-        
-        if (authorId) {
-          // If a specific author is targeted, but isDemoPath is false, check if they are demo
-          if (allExcludeIds.includes(authorId)) {
-            return res.json({ success: true, articles: [] });
-          }
-        } else {
-          query.authorId = { $nin: allExcludeIds };
-        }
-      }
-
-      const mongoArticles = await MongoArticle.find(query).sort({ createdAt: -1 });
-      return res.json({ success: true, articles: mongoArticles });
-    } catch (err: any) {
-      console.warn("[MongoDB] Error al consultar artículos de Mongo, usando respaldo JSON:", err.message);
+      const articles = await MongoArticle.find(query).sort({ createdAt: -1 });
+      return res.json({ success: true, articles });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
     }
   }
 
-  // Administrators can see draft/review articles of all users.
-  // Columnists can see their own drafts and all published articles.
-  let articles = Database.getArticles(includeDrafts, authorId);
-  if (!isDemoPath) {
-    const demoUserIds = ["user-marachia", "user-cauvia", "user-aaron", "user-editor-demo"];
-    if (authorId) {
-      if (demoUserIds.includes(authorId)) {
-        articles = [];
-      }
-    } else {
-      articles = articles.filter(a => !demoUserIds.includes(a.authorId));
-    }
+  // Local fallback
+  let list = [...Database.data.articles];
+  if (includeDrafts !== "true") {
+    list = list.filter(a => a.status === "published");
   }
-  res.json({ success: true, articles });
+  if (category) {
+    list = list.filter(a => a.category === category);
+  }
+  if (authorId) {
+    list = list.filter(a => a.authorId === authorId);
+  }
+  list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return res.json({ success: true, articles: list });
 });
 
 app.get("/api/articles/:id", async (req, res) => {
-  if (isMongoDbConnected()) {
-    try {
-      const art = await MongoArticle.findOne({ id: req.params.id });
-      if (art) {
-        art.views = (art.views || 0) + 1;
-        await art.save();
-        return res.json({ success: true, article: art });
-      } else {
-        return res.status(404).json({ success: false, message: "Artículo no encontrado en base de datos." });
-      }
-    } catch (err: any) {
-      console.warn("[MongoDB] Error buscando artículo, usando respaldo JSON:", err.message);
-    }
-  }
-
-  const article = Database.getArticleById(req.params.id);
-  if (!article) {
-    return res.status(404).json({ success: false, message: "Artículo no encontrado." });
-  }
-  res.json({ success: true, article });
-});
-
-app.post("/api/articles", async (req, res) => {
-  const { title, subtitle, content, category, imageUrl, status, tags, authorId, authorName, authorAvatar } = req.body;
-  if (!title || !content || !authorId || !authorName) {
-    return res.status(400).json({ success: false, message: "Título, contenido y autor son obligatorios." });
-  }
-
-  if (isMongoDbConnected()) {
-    try {
-      const newId = "art-" + Math.random().toString(36).substring(2, 11);
-      const articleDoc = new MongoArticle({
-        id: newId,
-        title,
-        subtitle: subtitle || "",
-        content,
-        category: category || "General",
-        imageUrl: imageUrl || "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&q=80&w=800",
-        status: status || "draft",
-        tags: tags || [],
-        authorId,
-        authorName,
-        authorAvatar: authorAvatar || ""
-      });
-      await articleDoc.save();
-      return res.status(201).json({ success: true, article: articleDoc });
-    } catch (err: any) {
-      console.warn("[MongoDB] Falló creación en Mongo, usando respaldo JSON:", err.message);
-    }
-  }
-
-  try {
-    const newArticle = Database.createArticle({
-      title,
-      subtitle: subtitle || "",
-      content,
-      category: category || "General",
-      imageUrl: imageUrl || "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&q=80&w=800",
-      status: status || "draft",
-      tags: tags || [],
-      authorId,
-      authorName,
-      authorAvatar
-    });
-    res.status(201).json({ success: true, article: newArticle });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.put("/api/articles/:id", async (req, res) => {
   const { id } = req.params;
-  const updates = req.body;
 
   if (isMongoDbConnected()) {
     try {
       const art = await MongoArticle.findOne({ id });
-      if (art) {
-        Object.assign(art, updates);
-        art.updatedAt = new Date().toISOString();
-        await art.save();
-        return res.json({ success: true, article: art });
-      } else {
-        return res.status(404).json({ success: false, message: "Artículo no encontrado en la base de datos." });
-      }
-    } catch (err: any) {
-      console.warn("[MongoDB] Falló actualización en Mongo, usando respaldo JSON:", err.message);
+      if (!art) return res.status(404).json({ success: false, message: "Artículo no encontrado" });
+      art.views += 1;
+      await art.save();
+      return res.json({ success: true, article: art });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
     }
   }
 
-  try {
-    const updatedArticle = Database.updateArticle(id, updates);
-    res.json({ success: true, article: updatedArticle });
-  } catch (err: any) {
-    res.status(404).json({ success: false, message: err.message });
+  const art = Database.data.articles.find(a => a.id === id);
+  if (!art) return res.status(404).json({ success: false, message: "Artículo no encontrado" });
+  art.views += 1;
+  Database.persist();
+  return res.json({ success: true, article: art });
+});
+
+app.post("/api/articles", async (req, res) => {
+  const { title, subtitle, content, category, imageUrl, status, tags, authorId, authorName, authorAvatar } = req.body;
+  
+  if (!title || !content || !authorId) {
+    return res.status(400).json({ success: false, message: "Título, contenido y autor id son obligatorios." });
   }
+
+  const newId = "art-" + Math.random().toString(36).substring(2, 11);
+  const articleObj = {
+    id: newId,
+    title,
+    subtitle: subtitle || "",
+    content,
+    category: category || "General",
+    imageUrl: imageUrl || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800",
+    status: status || "draft",
+    tags: Array.isArray(tags) ? tags : [],
+    authorId,
+    authorName,
+    authorAvatar: authorAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    views: 0
+  };
+
+  if (isMongoDbConnected()) {
+    try {
+      const newDoc = new MongoArticle(articleObj as any);
+      await newDoc.save();
+      return res.status(201).json({ success: true, article: newDoc });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  Database.data.articles.push(articleObj as any);
+  Database.persist();
+  return res.status(201).json({ success: true, article: articleObj });
+});
+
+app.put("/api/articles/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, subtitle, content, category, imageUrl, status, tags } = req.body;
+
+  if (isMongoDbConnected()) {
+    try {
+      const art = await MongoArticle.findOne({ id });
+      if (!art) return res.status(404).json({ success: false, message: "Artículo no encontrado." });
+      
+      if (title !== undefined) art.title = title;
+      if (subtitle !== undefined) art.subtitle = subtitle;
+      if (content !== undefined) art.content = content;
+      if (category !== undefined) art.category = category;
+      if (imageUrl !== undefined) art.imageUrl = imageUrl;
+      if (status !== undefined) art.status = status;
+      if (tags !== undefined) art.tags = tags;
+      art.updatedAt = new Date().toISOString();
+
+      await art.save();
+      return res.json({ success: true, article: art });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  const art = Database.data.articles.find(a => a.id === id);
+  if (!art) return res.status(404).json({ success: false, message: "Artículo no encontrado." });
+
+  if (title !== undefined) art.title = title;
+  if (subtitle !== undefined) art.subtitle = subtitle;
+  if (content !== undefined) art.content = content;
+  if (category !== undefined) art.category = category;
+  if (imageUrl !== undefined) art.imageUrl = imageUrl;
+  if (status !== undefined) art.status = status;
+  if (tags !== undefined) art.tags = tags;
+  art.updatedAt = new Date().toISOString();
+
+  Database.persist();
+  return res.json({ success: true, article: art });
 });
 
 app.delete("/api/articles/:id", async (req, res) => {
@@ -469,163 +664,275 @@ app.delete("/api/articles/:id", async (req, res) => {
   if (isMongoDbConnected()) {
     try {
       const result = await MongoArticle.deleteOne({ id });
-      if (result.deletedCount && result.deletedCount > 0) {
-        // También limpiar comentarios localmente si existen
-        Database.deleteCommentsForArticle(id);
-        return res.json({ success: true, message: "Artículo eliminado exitosamente de MongoDB." });
-      } else {
-        return res.status(404).json({ success: false, message: "Artículo no encontrado en la base de datos." });
-      }
-    } catch (err: any) {
-      console.warn("[MongoDB] Falló eliminación en Mongo, usando respaldo JSON:", err.message);
+      if (result.deletedCount === 0) return res.status(404).json({ success: false, message: "Artículo no encontrado." });
+      return res.json({ success: true, message: "Artículo eliminado con éxito." });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
     }
   }
 
-  const deleted = Database.deleteArticle(id);
-  if (deleted) {
-    res.json({ success: true, message: "Artículo eliminado exitosamente." });
-  } else {
-    res.status(404).json({ success: false, message: "Artículo no encontrado." });
-  }
+  const idx = Database.data.articles.findIndex(a => a.id === id);
+  if (idx === -1) return res.status(404).json({ success: false, message: "Artículo no encontrado." });
+
+  Database.data.articles.splice(idx, 1);
+  Database.persist();
+  return res.json({ success: true, message: "Artículo eliminado con éxito." });
 });
 
+// 9. Comments Endpoints
+app.get("/api/articles/:id/comments", async (req, res) => {
+  const { id } = req.params;
 
-// Comments Endpoints
-app.get("/api/articles/:id/comments", (req, res) => {
-  const comments = Database.getCommentsForArticle(req.params.id);
-  res.json({ success: true, comments });
-});
-
-app.post("/api/articles/:id/comments", (req, res) => {
-  const { authorName, text, authorEmail } = req.body;
-  if (!authorName || !text) {
-    return res.status(400).json({ success: false, message: "Nombre de autor y comentario son requeridos." });
-  }
-
-  try {
-    const newComment = Database.addComment(req.params.id, authorName, text, authorEmail);
-    res.status(201).json({ success: true, comment: newComment });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Site Settings Endpoints
-app.get("/api/settings", (req, res) => {
-  try {
-    const settings = Database.getSettings();
-    res.json({ success: true, settings });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.put("/api/settings", (req, res) => {
-  try {
-    const updated = Database.updateSettings(req.body);
-    res.json({ success: true, settings: updated });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// AI Feedback Endpoint (Lazy initialization of @google/genai)
-app.post("/api/ai/suggest", async (req, res) => {
-  const { title, subtitle, content } = req.body;
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  // Safeguard: mock professional advice if GEMINI_API_KEY is not set or has placeholder values
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.includes("API_KEY")) {
-    return res.json({
-      success: true,
-      outline: "Nota editorial (Consultor IA): El escrito posee una prosa de gran factura que evoca los cánones del periodismo de opinión pública tradicional. Los conceptos sobre soberanía nacional e inserción global se entrelazan de forma congruente. Se aconseja robustecer la argumentación agregando una comparación explícita sobre macrozonas e incluir estadísticas vigentes del Cono Sur.",
-      suggestions: [
-        "El resurgimiento institucional: Hacia un nuevo contrato social chileno",
-        "Soberanía fragmentada y los retos soberanos del Chile moderno",
-        "Poder descentralizado: Reestructuración de la gobernanza territorial"
-      ]
-    });
-  }
-
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Actúa como un editor político sénior y estratega de asuntos públicos del diario premium "Columna Pública".
-    Analiza el texto brindado a continuación y responde en formato JSON con dos propiedades obligatorias en español:
-    1. "outline": Un comentario editorial sumamente elocuente, constructivo y sofisticado (de 2 a 3 párrafos cortos) aconsejando mejoras de tono, cohesión conceptual, sustento de datos y madurez institucional para pulir el texto.
-    2. "suggestions": Un arreglo con 3 propuestas de títulos sugeridos alternativos de alto impacto periodístico y tono académico.
-
-    Datos de la columna:
-    - Título propuesto: "${title}"
-    - Subtítulo propuesto: "${subtitle}"
-    - Contenido de borrador: "${content.substring(0, 3000)}"
-
-    Responde únicamente con un objeto JSON válido, sin delimitadores de código extra o marcas secundarias. Ejemplo de respuesta:
-    {
-      "outline": "Tu análisis aquí...",
-      "suggestions": ["Título 1", "Título 2", "Título 3"]
-    }`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: prompt,
-    });
-
-    const text = response.text || '';
-    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+  if (isMongoDbConnected()) {
     try {
-      const parsed = JSON.parse(cleanText);
-      res.json({
-        success: true,
-        outline: parsed.outline,
-        suggestions: parsed.suggestions
-      });
-    } catch {
-      // Fallback
-      res.json({
-        success: true,
-        outline: text || "Feedback generado exitosamente. Revisa el balance formal y geopolítico de tu redacción.",
-        suggestions: [
-          title + " (Edición Académica)",
-          "El dilema estatutario: " + title,
-          "Gobernanza y territorio en el cono sur"
-        ]
-      });
+      const comments = await MongoComment.find({ articleId: id }).sort({ createdAt: -1 });
+      return res.json({ success: true, comments });
+    } catch (e: any) {
+      return res.status(205).json({ success: false, message: e.message });
     }
-  } catch (error) {
-    console.error("[Gemini AI Request Error]", error);
-    res.status(500).json({ success: false, message: "Error procesando el análisis inteligente." });
+  }
+
+  const list = Database.data.comments.filter(c => c.articleId === id);
+  list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return res.json({ success: true, comments: list });
+});
+
+app.post("/api/articles/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { authorName, authorEmail, content } = req.body;
+
+  if (!authorName || !authorEmail || !content) {
+    return res.status(400).json({ success: false, message: "Todos los campos del comentario son obligatorios." });
+  }
+
+  const newId = "comm-" + Math.random().toString(36).substring(2, 11);
+  const commentObj = {
+    id: newId,
+    articleId: id,
+    authorName,
+    authorEmail,
+    content,
+    createdAt: new Date().toISOString()
+  };
+
+  if (isMongoDbConnected()) {
+    try {
+      const doc = new MongoComment(commentObj);
+      await doc.save();
+      return res.status(201).json({ success: true, comment: doc });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  Database.data.comments.push(commentObj);
+  Database.persist();
+  return res.status(201).json({ success: true, comment: commentObj });
+});
+
+// 10. Site Settings Endpoints
+app.get("/api/settings", async (req, res) => {
+  if (isMongoDbConnected()) {
+    try {
+      const settings = await MongoSettings.findOne({ key: "site_settings" });
+      if (settings) {
+        return res.json({
+          success: true,
+          settings: {
+            siteName: settings.siteName,
+            siteSubtitle: settings.siteSubtitle,
+            enableComments: settings.enableComments,
+            enableAIAdviser: settings.enableAIAdviser,
+            enableRegistrations: settings.enableRegistrations,
+            enableShareButtons: settings.enableShareButtons,
+            heroLayout: settings.heroLayout,
+            alertBannerText: settings.alertBannerText
+          }
+        });
+      }
+    } catch (e: any) {
+      console.warn("MongoDB Settings get failed. Fetching memory fallback", e.message);
+    }
+  }
+
+  return res.json({ success: true, settings: Database.data.settings });
+});
+
+app.put("/api/settings", async (req, res) => {
+  const { siteName, siteSubtitle, enableComments, enableAIAdviser, enableRegistrations, enableShareButtons, heroLayout, alertBannerText } = req.body;
+
+  if (isMongoDbConnected()) {
+    try {
+      const settings = await MongoSettings.findOne({ key: "site_settings" });
+      if (settings) {
+        if (siteName !== undefined) settings.siteName = siteName;
+        if (siteSubtitle !== undefined) settings.siteSubtitle = siteSubtitle;
+        if (enableComments !== undefined) settings.enableComments = enableComments;
+        if (enableAIAdviser !== undefined) settings.enableAIAdviser = enableAIAdviser;
+        if (enableRegistrations !== undefined) settings.enableRegistrations = enableRegistrations;
+        if (enableShareButtons !== undefined) settings.enableShareButtons = enableShareButtons;
+        if (heroLayout !== undefined) settings.heroLayout = heroLayout;
+        if (alertBannerText !== undefined) settings.alertBannerText = alertBannerText;
+        await settings.save();
+        return res.json({ success: true, settings });
+      }
+    } catch (e: any) {
+      console.warn("MongoDB update settings error, using fallback logic", e.message);
+    }
+  }
+
+  const s = Database.data.settings;
+  if (siteName !== undefined) s.siteName = siteName;
+  if (siteSubtitle !== undefined) s.siteSubtitle = siteSubtitle;
+  if (enableComments !== undefined) s.enableComments = enableComments;
+  if (enableAIAdviser !== undefined) s.enableAIAdviser = enableAIAdviser;
+  if (enableRegistrations !== undefined) s.enableRegistrations = enableRegistrations;
+  if (enableShareButtons !== undefined) s.enableShareButtons = enableShareButtons;
+  if (heroLayout !== undefined) s.heroLayout = heroLayout;
+  if (alertBannerText !== undefined) s.alertBannerText = alertBannerText;
+
+  Database.persist();
+  return res.json({ success: true, settings: s });
+});
+
+
+// 11. AI Editorial Assistant (Gemini 3.5 Flash server-side logic)
+app.post("/api/ai/suggest", async (req, res) => {
+  const { draftTitle, draftContent, action } = req.body;
+  if (!draftContent) {
+    return res.status(400).json({ success: false, message: "Debe proveer el contenido del borrador para realizar análisis por Inteligencia Artificial." });
+  }
+
+  const client = getAiClient();
+  if (!client) {
+    return res.status(400).json({
+      success: false,
+      message: "El Asesor Editorial de IA no se encuentra activo debido a la falta de variables de entorno (GEMINI_API_KEY)."
+    });
+  }
+
+  try {
+    let customPrompt = "";
+    if (action === "improve") {
+      customPrompt = `Eres el Asesor Editorial de Inteligencia Artificial para el prestigioso periódico "Columna Pública". 
+Te proveemos un borrador y debes redactar una versión mejorada, enriqueciendo la sofisticación de vocabulario, claridad macroeconómica o política, y estructurando párrafos fluidos y elegantes. 
+Conserva la tesis central y cualquier referencia del autor original. Retorna ÚNICAMENTE la versión corregida y mejorada en texto plano y Markdown sin preámbulos.
+Título del borrador: ${draftTitle || "Sin título"}
+Contenido: ${draftContent}`;
+    } else if (action === "outline") {
+      customPrompt = `Eres el Asesor Editorial de "Columna Pública". Analiza el borrador provisto y provee una estructura recomendada (outline), títulos sugeridos, y 3 puntos clave macroeconómicos o de geopolítica regional que elevarían el debate de esta columna. Retorna la propuesta redactada con sofisticación extrema y formato Markdown.
+Título: ${draftTitle || "Sin título"}
+Contenido: ${draftContent}`;
+    } else {
+      customPrompt = `Eres el Editor Consultor de "Columna Pública". Haz una revisión crítica de ortografía, estilo, gramática y potencia retórica del siguiente texto. Indica los aciertos y ofrece 3 observaciones de mejora estilística o de rigor académico. Retorna en un tono culto, profesional y formativo utilizando Markdown.
+Título: ${draftTitle || "Sin título"}
+Contenido: ${draftContent}`;
+    }
+
+    // Call GenAI
+    const aiResponse = await client.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: customPrompt
+    });
+
+    const advice = aiResponse.text || "No se pudo obtener una respuesta adecuada del modelo editorial.";
+    return res.json({ success: true, advice });
+  } catch (error: any) {
+    console.error("[Gemini API Error]", error);
+    return res.status(500).json({ success: false, message: `Fallo el análisis inteligente: ${error.message}` });
   }
 });
 
-// --- Vite Dev Server & Static Assets configuration ---
 
-async function start() {
-  if (process.env.NODE_ENV !== "production") {
-    // Development Mode
+// 12. Columnist Applications Endpoints
+app.post("/api/applications", async (req, res) => {
+  const { name, email, degree, motivation, category, documentUrl } = req.body;
+  if (!name || !email || !degree || !motivation) {
+    return res.status(400).json({ success: false, message: "Nombre, Correo, Grado Académico/Profesión y Motivación son requeridos." });
+  }
+
+  const appObj = {
+    id: "app-" + Math.random().toString(36).substring(2, 11),
+    name,
+    email: email.toLowerCase(),
+    degree,
+    motivation,
+    category,
+    documentUrl: documentUrl || "",
+    status: "pending" as const,
+    createdAt: new Date().toISOString()
+  };
+
+  // Dispatch email notification to admin asynchronously to avoid blocking user response
+  sendApplicationEmail({
+    name: appObj.name,
+    email: appObj.email,
+    degree: appObj.degree,
+    motivation: appObj.motivation,
+    category: appObj.category,
+    documentUrl: appObj.documentUrl
+  }).catch(err => {
+    console.error("[Email Notification Error] Falló el envío de correo de postulación:", err);
+  });
+
+  if (isMongoDbConnected()) {
+    try {
+      const doc = new MongoApplication(appObj);
+      await doc.save();
+      return res.status(201).json({ success: true, application: doc });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  if (!Database.data.applications) {
+    Database.data.applications = [];
+  }
+  Database.data.applications.push(appObj);
+  Database.persist();
+  return res.status(201).json({ success: true, application: appObj });
+});
+
+app.get("/api/applications", async (req, res) => {
+  if (isMongoDbConnected()) {
+    try {
+      const apps = await MongoApplication.find({}).sort({ createdAt: -1 });
+      return res.json({ success: true, applications: apps });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+  
+  if (!Database.data.applications) {
+    Database.data.applications = [];
+  }
+  return res.json({ success: true, applications: [...Database.data.applications].reverse() });
+});
+
+
+// ======================== FRONTEND ASSETS ENGINE ========================
+
+async function bootstrap() {
+  if (isProd) {
+    // Static assets from Vite production build
+    app.use(express.static(path.resolve("./dist")));
+    app.get("*", (req, res) => {
+      res.sendFile(path.resolve("./dist/index.html"));
+    });
+  } else {
+    // Vite Dev middleware so that HMR (though disabled) and dev rendering works on port 3000
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "spa"
     });
     app.use(vite.middlewares);
-    console.log("[Vite] Middleware mounted in local development mode.");
-  } else {
-    // Production Mode
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-    console.log("[Vite] Production static server mounted.");
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n======================================================`);
-    console.log(`  COLUMNA PÚBLICA SERVER RUNNING AT http://localhost:${PORT}`);
-    console.log(`  Super Admin Registered: admin@columnapublica.cl / admin123`);
-    console.log(`  Authorizing Admin Registered: go.orellana.c@gmail.com / admin123`);
-    console.log(`======================================================\n`);
+  app.listen(port, () => {
+    console.log(`[Server] Columna Pública corriendo exitosamente en el puerto ${port}`);
   });
 }
 
-start();
+bootstrap().catch(err => {
+  console.error("Failed to start server:", err);
+});

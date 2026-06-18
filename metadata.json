@@ -1,6 +1,8 @@
 {
   "name": "Columna Pública",
-  "description": "Portal de opinión, análisis y noticias políticas de alto nivel estándar, redactado por analistas y columnistas destacados.",
+  "description": "Plataforma editorial de alta gama para análisis político, macroeconomía e inserción global.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

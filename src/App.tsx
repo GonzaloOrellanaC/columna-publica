@@ -1,229 +1,202 @@
-import React, { useState, useEffect } from 'react';
-import { Article, User } from './types';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
-import { HomeView } from './components/HomeView';
-import { DetailView } from './components/DetailView';
-import { LoginView } from './components/LoginView';
-import { DashboardView } from './components/DashboardView';
-import { AboutView } from './components/AboutView';
+import React, { useState, useEffect } from "react";
+import { Navbar } from "./components/Navbar";
+import { Footer } from "./components/Footer";
+import { HomeView } from "./components/HomeView";
+import { AboutView } from "./components/AboutView";
+import { DetailView } from "./components/DetailView";
+import { LoginView } from "./components/LoginView";
+import { DashboardView } from "./components/DashboardView";
+import { User, Article, SiteSettings, ArticleCategory } from "./types";
+import { Newspaper, Bell } from "lucide-react";
 
-export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'detail' | 'login' | 'dashboard' | 'about'>('home');
-  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
-  
-  // Filtering & search states managed globally
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [showColumnistsList, setShowColumnistsList] = useState(false);
+export const App: React.FC = () => {
+  const [currentView, setView] = useState<string>("home");
+  const [selectedArticleId, setSelectedArticleId] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | "Todo">("Todo");
 
-  // Authenticated columnist / admin session
+  // Global Session State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Articles array on the feed
+  // Articles & Settings Lists State
   const [articles, setArticles] = useState<Article[]>([]);
-  const [loadingArticles, setLoadingArticles] = useState(true);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    siteName: "Columna Pública",
+    siteSubtitle: "Asuntos Políticos, Macroeconomía e Inserción Global",
+    enableComments: true,
+    enableAIAdviser: true,
+    enableRegistrations: true,
+    enableShareButtons: true,
+    heroLayout: "editorial",
+    alertBannerText: "Última Edición: Análisis estratégico de geopolítica regional y soberanía institucional chilenas."
+  });
 
-  // CMS settings managed globally
-  const [settings, setSettings] = useState<{
-    siteName: string;
-    siteSubtitle: string;
-    alertBannerText: string;
-    heroLayout: 'editorial' | 'classic' | 'dense';
-    enableAboutPage: boolean;
-    enableColumnistSidebar: boolean;
-    enableAiAssistant: boolean;
-    enableDynamicTicker: boolean;
-  } | null>(null);
+  // Custom Notifications Toast System
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" | null }>({
+    message: "",
+    type: null
+  });
 
-  useEffect(() => {
-    // Restore user session if preserved
-    const cached = localStorage.getItem('columna_publica_session');
-    if (cached) {
-      try {
-        setCurrentUser(JSON.parse(cached));
-      } catch (e) {
-        localStorage.removeItem('columna_publica_session');
-      }
-    }
-
-    // Load initial articles from DB
-    loadArticlesOverview();
-
-    // Load initial CMS configurations
-    loadCmsSettings();
-
-    // Setup listener for search callback custom triggers (for quick columnists filtration)
-    const handleFilterColumnist = (e: Event) => {
-      const authorName = (e as CustomEvent).detail;
-      setSearchQuery(authorName);
-      setSelectedCategory('');
-      setShowColumnistsList(false);
-      setCurrentView('home');
-    };
-
-    window.addEventListener('filter-columnist', handleFilterColumnist);
-    window.addEventListener('cms-settings-updated', loadCmsSettings);
-    return () => {
-      window.removeEventListener('filter-columnist', handleFilterColumnist);
-      window.removeEventListener('cms-settings-updated', loadCmsSettings);
-    };
-  }, []);
-
-  const loadCmsSettings = async () => {
-    try {
-      const res = await fetch('/api/settings');
-      const data = await res.json();
-      if (data.success) {
-        setSettings(data.settings);
-      }
-    } catch (err) {
-      console.error("[App] Dynamic loader settings error:", err);
-    }
+  const triggerToast = (message: string, type: "success" | "error" | "info") => {
+    setToast({ message, type });
+    // Auto-clear after 3.5s
+    setTimeout(() => {
+      setToast({ message: "", type: null });
+    }, 4500);
   };
 
-  const loadArticlesOverview = async () => {
-    setLoadingArticles(true);
+  // Fetch all articles
+  const fetchArticles = async () => {
+    setArticlesLoading(true);
     try {
-      const isDemoPath = window.location.pathname === '/demo';
-      const res = await fetch(`/api/articles?includeDrafts=true${isDemoPath ? '&isDemoPath=true' : ''}`);
+      const res = await fetch("/api/articles");
       const data = await res.json();
       if (data.success) {
         setArticles(data.articles);
       }
-    } catch (err) {
-      console.error("[App] Network error retrieving public articles:", err);
+    } catch (e) {
+      console.error("[App] Failed to fetch articles data", e);
     } finally {
-      setLoadingArticles(false);
+      setArticlesLoading(false);
     }
   };
 
-  const handleLoginSuccess = (userSession: User) => {
-    setCurrentUser(userSession);
-    localStorage.setItem('columna_publica_session', JSON.stringify(userSession));
-    setCurrentView('dashboard');
+  // Fetch Site Settings from Backend
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      if (data.success) {
+        setSiteSettings(data.settings);
+      }
+    } catch (e) {
+      console.error("[App] Failed to fetch settings data", e);
+    }
+  };
+
+  // Try parsing session on load
+  useEffect(() => {
+    const saved = localStorage.getItem("columna_publica_session");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.email) {
+          setCurrentUser(parsed);
+          triggerToast(`Sesión restablecida para ${parsed.name}`, "info");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchArticles();
+    fetchSettings();
+  }, []);
+
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem("columna_publica_session", JSON.stringify(user));
+    // Redirect to cabinet dashboard
+    setView("dashboard");
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('columna_publica_session');
-    setCurrentView('home');
+    localStorage.removeItem("columna_publica_session");
+    triggerToast("Sesión finalizada correctamente.", "info");
+    setView("home");
   };
 
-  const handleNavbarNavigate = (view: 'home' | 'login' | 'dashboard' | 'about', params?: any) => {
-    if (params?.showColumnists) {
-      setShowColumnistsList(true);
-      setSelectedCategory('');
-      setSearchQuery('');
-    } else {
-      setShowColumnistsList(false);
-    }
-    
-    setCurrentView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSelectArticle = (id: string) => {
+  const handleSelectArticleDetail = (id: string) => {
     setSelectedArticleId(id);
-    setCurrentView('detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setView("detail");
   };
 
-  const handleSelectCategory = (cat: string) => {
-    setSelectedCategory(cat);
-    setSearchQuery('');
-    setShowColumnistsList(false);
-    setCurrentView('home');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // 1. Separate Full-page screen renderers to match the exact mockup specs
-  if (currentView === 'login') {
-    return (
-      <div className="bg-[#050B14] min-h-screen flex flex-col justify-between">
-        <LoginView
-          onLoginSuccess={handleLoginSuccess}
-          onBackToHome={() => setCurrentView('home')}
-        />
-        <div className="text-center py-6 text-xs text-white/40 bg-black/40 border-t border-white/10">
-          Columna Pública — Todos los derechos reservados. go.orellana.c@gmail.com
-        </div>
-      </div>
-    );
-  }
-
-  if (currentView === 'dashboard') {
-    if (!currentUser) {
-      setCurrentView('login');
-      return null;
-    }
-    return (
-      <DashboardView
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onNavigateHome={() => {
-          loadArticlesOverview(); // Refresh any potential changes made inside backoffice
-          setCurrentView('home');
-        }}
-      />
-    );
-  }
-
-  // Common Layout (Header, Scrollable main view, Footer)
   return (
-    <div className="flex flex-col min-h-screen bg-[#050B14]">
+    <div className="min-h-screen bg-[#030a16] text-[#e2e8f0] flex flex-col justify-between selection:bg-[#dfba53]/30 selection:text-white">
       
-      {/* Navigation Header */}
+      {/* COHESIVE NAVIGATION ELEMENT */}
       <Navbar
-        currentUser={currentUser}
-        onNavigate={handleNavbarNavigate}
-        onSearch={(query) => {
-          setSearchQuery(query);
-          setSelectedCategory('');
-          setShowColumnistsList(false);
+        currentView={currentView}
+        setView={(view) => {
+          setView(view);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }}
+        currentUser={currentUser}
         onLogout={handleLogout}
-        settings={settings}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-grow">
-        {currentView === 'home' && (
+      {/* CUSTOM TOAST NOTIFICATION FLOATING PORTAL */}
+      {toast.type && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce duration-300">
+          <div className={`p-4 rounded-xl border shadow-xl flex items-center space-x-3 text-xs font-mono select-none ${
+            toast.type === "success"
+              ? "bg-[#052115] border-emerald-800 text-emerald-400"
+              : toast.type === "error"
+              ? "bg-[#25090f] border-rose-900 text-rose-400"
+              : "bg-[#04172c] border-sky-900 text-sky-400"
+          }`}>
+            <Bell className="w-4 h-4 animate-swing text-[#dfba53]" />
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* SCENARIO RENDERING FLOWS */}
+      <main className="flex-grow transition-all duration-300">
+        {currentView === "home" && (
           <HomeView
             articles={articles}
-            searchQuery={searchQuery}
+            settings={siteSettings}
+            onSelectArticle={handleSelectArticleDetail}
+            isLoading={articlesLoading}
             selectedCategory={selectedCategory}
-            onSelectArticle={handleSelectArticle}
-            onFilterCategory={handleSelectCategory}
-            showColumnistsList={showColumnistsList}
-            settings={settings}
+            setSelectedCategory={setSelectedCategory}
           />
         )}
 
-        {currentView === 'detail' && selectedArticleId && (
+        {currentView === "about" && (
+          <AboutView 
+            users={[]} // Handled with default seed data
+            articles={articles} 
+          />
+        )}
+
+        {currentView === "detail" && (
           <DetailView
             articleId={selectedArticleId}
-            onBackToHome={() => {
-              loadArticlesOverview(); // Refresh reads views
-              setCurrentView('home');
-            }}
-            onSelectArticle={handleSelectArticle}
+            onBack={() => setView("home")}
+            settings={siteSettings}
+            currentUser={currentUser}
+            triggerToast={triggerToast}
           />
         )}
 
-        {currentView === 'about' && (
-          <AboutView 
-            onNavigateHome={() => setCurrentView('home')} 
+        {currentView === "login" && (
+          <LoginView
+            onLoginSuccess={handleLoginSuccess}
+            triggerToast={triggerToast}
+            siteSettings={siteSettings}
+          />
+        )}
+
+        {currentView === "dashboard" && currentUser && (
+          <DashboardView
+            currentUser={currentUser}
+            settings={siteSettings}
+            updateSettingsInApp={(newSettings) => setSiteSettings(newSettings)}
+            fetchArticlesExternal={fetchArticles}
+            triggerToast={triggerToast}
+            articles={articles}
           />
         )}
       </main>
 
-      {/* Corporate Navy Footer */}
-      <Footer 
-        onNavigate={handleNavbarNavigate} 
-        onFilterCategory={handleSelectCategory} 
-      />
+      {/* SOGNIFICATIVE FOOTER ELEMENT */}
+      <Footer />
 
     </div>
   );
-}
+};
+export default App;
