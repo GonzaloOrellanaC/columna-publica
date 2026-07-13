@@ -113,21 +113,23 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
   // Fetch general site settings
   let siteName = "Columna Pública";
   let siteSubtitle = "Asuntos Políticos, Macroeconomía e Inserción Global";
-  const fallbackImage = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80";
+  let editorialSlogan = "Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas.";
+  const fallbackImage = "/logo.svg";
 
   try {
     const settings = await DatabaseService.getSettings();
     if (settings) {
       siteName = settings.siteName || siteName;
       siteSubtitle = settings.siteSubtitle || siteSubtitle;
+      editorialSlogan = settings.editorialSlogan || editorialSlogan;
     }
   } catch (err) {
     console.warn("[Metadata Injection] Failed to load settings, using defaults", err);
   }
 
-  let title = `${siteName} | Editorial de Geopolítica y Macroeconomía`;
-  let description = `${siteSubtitle}. Análisis estratégico de geopolítica regional y soberanía institucional.`;
-  let imageUrl = fallbackImage;
+  let title = `${siteName} | ${siteSubtitle}`;
+  let description = `"${editorialSlogan}"`;
+  let imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
 
   const pathname = req.path;
 
