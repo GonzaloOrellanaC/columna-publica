@@ -24,7 +24,7 @@ dotenv.config();
 
 const isProd = process.env.NODE_ENV === "production";
 const app = express();
-const port = 3000; // Required container port
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Trust reverse proxies to resolve correct protcol (https) and client IP addresses
 app.set("trust proxy", true);
