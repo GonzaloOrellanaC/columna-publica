@@ -127,16 +127,24 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     console.warn("[Metadata Injection] Failed to load settings, using defaults", err);
   }
 
-  let title = `${siteName} | ${siteSubtitle}`;
-  let description = `"${editorialSlogan}"`;
-  let imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
+  let title = "";
+  let description = "";
+  let imageUrl = "";
 
   const pathname = req.path;
+  const isHomePage = pathname === "/" || pathname === "" || pathname === "/index.html";
 
-  // Intercept detail route
-  if (pathname.includes("/columna/")) {
+  if (isHomePage) {
+    title = `${siteName} | ${siteSubtitle}`;
+    description = `"${editorialSlogan}"`;
+    imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
+  } else if (pathname.includes("/columna/")) {
     const parts = pathname.split("/columna/");
     const slug = parts[parts.length - 1];
+    title = `${siteName} | ${siteSubtitle}`;
+    description = `"${editorialSlogan}"`;
+    imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
+
     if (slug) {
       try {
         const articles = await DatabaseService.getArticles({ includeDrafts: false });
@@ -163,11 +171,16 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     const catName = categoryMap[catSlug] || "Temas de Geopolítica";
     title = `Sección ${catName} | ${siteName}`;
     description = `Revise las últimas publicaciones, debates y columnas de opinión especializadas en ${catName} en el portal chileno ${siteName}.`;
-    imageUrl = fallbackImage;
+    imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
   } else if (pathname.includes("/columnistas")) {
     title = `Nuestro Consejo Editorial | ${siteName}`;
     description = `Conozca a los destacados columnistas, académicos y analistas que escriben y debaten diariamente en ${siteName}.`;
     imageUrl = "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=1200&auto=format&fit=crop&q=80";
+  } else {
+    // Standard default for any other unhandled route
+    title = `${siteName} | ${siteSubtitle}`;
+    description = `"${editorialSlogan}"`;
+    imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
   }
 
   // Pre-process title & description formatting to keep markup perfectly compliant
