@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { User } from "../types";
-import { UserCheck, Shield, KeyRound, Mail, Sparkles, UserPlus, ArrowLeft, Lock } from "lucide-react";
+import { UserCheck, Shield, KeyRound, Mail, Sparkles, UserPlus, ArrowLeft, Lock, ShieldAlert, Info } from "lucide-react";
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
@@ -9,6 +10,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, triggerToast, siteSettings }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,17 +29,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, triggerToa
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isForgotMode, setIsForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [searchParams] = useSearchParams();
 
   // Extract recovery token from URL query params on mount
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tok = params.get("recoveryToken");
+    const tok = searchParams.get("recoveryToken");
     if (tok) {
       setRecoveryToken(tok);
       setIsForgotMode(false);
       setIsRegistering(false);
     }
-  }, []);
+  }, [searchParams]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -380,6 +382,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, triggerToa
               </div>
             </div>
 
+            <div className="p-3 bg-slate-950/80 border border-slate-900 rounded-lg flex items-center justify-between gap-1.5 text-[10px] sm:text-xs">
+              <span className="text-slate-400 font-mono flex items-center gap-1">
+                <ShieldAlert className="w-3.5 h-3.5 text-[#dfba53] inline" />
+                <span>Sus credenciales están encriptadas.</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate("/politica-privacidad")}
+                className="text-[#dfba53] hover:text-[#cfa543] uppercase font-mono font-bold tracking-wider cursor-pointer font-bold border border-slate-800 bg-slate-900 rounded px-1.5 py-0.5 inline-flex items-center gap-1 hover:bg-slate-800 transition-colors"
+                style={{ fontSize: '8.5px' }}
+              >
+                <Info className="w-3 h-3 text-[#dfba53]" />
+                Info Privacidad
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -455,21 +473,37 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, triggerToa
               />
             </div>
 
-            <div className="flex gap-2 pt-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setIsRegistering(false)}
-                className="w-1/2 p-2 bg-slate-900 hover:bg-slate-850 rounded text-slate-300 font-mono"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="w-1/2 p-2 bg-[#dfba53] text-[#030a16] rounded font-mono font-semibold"
-              >
-                Completar Registro
-              </button>
-            </div>
+             <div className="p-2.5 bg-slate-950/80 border border-slate-900 rounded-lg flex items-center justify-between gap-1 text-[10px] sm:text-xs">
+               <span className="text-slate-400 font-mono flex items-center gap-1 leading-tight">
+                 <ShieldAlert className="w-3.5 h-3.5 text-[#dfba53] shrink-0" />
+                 <span>Datos resguardados con encriptación robusta.</span>
+               </span>
+               <button
+                 type="button"
+                 onClick={() => navigate("/politica-privacidad")}
+                 className="text-[#dfba53] hover:text-[#cfa543] uppercase font-mono tracking-wider cursor-pointer font-bold border border-slate-800 bg-slate-900 rounded px-1.5 py-0.5 inline-flex items-center gap-1 hover:bg-slate-800 transition-colors shrink-0"
+                 style={{ fontSize: '8.5px' }}
+               >
+                 <Info className="w-3 select-none text-[#dfba53]" />
+                 Privacidad
+               </button>
+             </div>
+
+             <div className="flex gap-2 pt-2 text-xs">
+               <button
+                 type="button"
+                 onClick={() => setIsRegistering(false)}
+                 className="w-1/2 p-2 bg-slate-900 hover:bg-slate-850 rounded text-slate-300 font-mono"
+               >
+                 Cancelar
+               </button>
+               <button
+                 type="submit"
+                 className="w-1/2 p-2 bg-[#dfba53] text-[#030a16] rounded font-mono font-semibold"
+               >
+                 Completar Registro
+               </button>
+             </div>
           </form>
         )}
       </div>

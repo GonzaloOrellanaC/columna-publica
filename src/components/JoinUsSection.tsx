@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import { PenTool, CheckCircle, AlertCircle, Upload, Sparkles, User, Mail, Award, Compass, MessageSquare, FileText, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { PenTool, CheckCircle, AlertCircle, Upload, Sparkles, User, Mail, Award, Compass, MessageSquare, FileText, ArrowRight, ShieldAlert, Info } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArticleCategory } from "../types";
+import { FileUploader } from "./FileUploader";
 
 export const JoinUsSection: React.FC = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -178,7 +181,7 @@ export const JoinUsSection: React.FC = () => {
                   <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed">
                     Hemos recibido correctamente su perfil académico e inquietudes. Nuestro Gabinete Editorial 
                     revisará sus credenciales estratégicas y le responderá a la brevedad a través de 
-                    <strong className="text-emerald-400 font-mono"> proyectos@omtecnologia.cl</strong> coordinando la entrevista técnica.
+                    <strong className="text-emerald-400 font-mono"> contacto@columnapublica.cl</strong> coordinando la entrevista técnica.
                   </p>
                   <button
                     onClick={() => {
@@ -297,36 +300,32 @@ export const JoinUsSection: React.FC = () => {
 
                   {/* File Upload (Optional Curriculum / Draft Layout) */}
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                      Adjuntar Borrador de Columna o Currículum Académico (Opcional)
-                    </label>
-                    <div className="border border-dashed border-slate-800 rounded-lg p-5 flex flex-col items-center justify-center bg-[#010610] hover:border-[#dfba53]/50 transition-colors relative">
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={handleFileUpload}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      <Upload className={`w-8 h-8 text-slate-500 mb-2 ${uploading ? 'animate-spin text-[#dfba53]' : ''}`} />
-                      
-                      {uploading ? (
-                        <p className="text-[10px] font-mono text-slate-400">Subiendo documento al servidor de despacho...</p>
-                      ) : fileName ? (
-                        <div className="text-center space-y-1">
-                          <p className="text-xs text-[#dfba53] font-mono font-bold font-semibold">{fileName}</p>
-                          <p className="text-[9px] text-slate-500">Documento cargado correctamente. Haz clic o arrastra para reemplazar.</p>
-                        </div>
-                      ) : (
-                        <div className="text-center space-y-1">
-                          <p className="text-xs text-slate-300 font-medium">Arrastre o seleccione su archivo PDF, Word o TXT</p>
-                          <p className="text-[9px] text-slate-500">Tamaño máximo de archivo permitido: 10MB</p>
-                        </div>
-                      )}
-                    </div>
+                    <FileUploader
+                      value={documentUrl}
+                      onChange={setDocumentUrl}
+                      type="document"
+                      label="Adjuntar Borrador de Columna o Currículum Académico (Opcional)"
+                      placeholder="Arrastre su archivo PDF, Word o TXT aquí o haga clic para buscarlo en su dispositivo"
+                    />
                   </div>
 
-                  {/* Submit Button */}
-                  <div className="pt-2 flex justify-end">
+                  {/* Submit Button & Privacy Info */}
+                  <div className="pt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-slate-900 pt-4">
+                    <div className="flex items-center space-x-2 text-[11px] sm:text-xs text-slate-400">
+                      <ShieldAlert className="w-3.5 h-3.5 text-[#dfba53] shrink-0" />
+                      <span>Sus datos personales están resguardados bajo secreto editorial.</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOpen(false);
+                          navigate("/politica-privacidad");
+                        }}
+                        className="text-[#dfba53] hover:text-[#cfa543] font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer py-1 px-2.5 bg-slate-950 border border-slate-800 rounded flex items-center space-x-1.5 hover:bg-slate-900 transition-all"
+                      >
+                        <Info className="w-3.5 h-3.5 text-[#dfba53]" />
+                        <span>Ver Info / Privacidad</span>
+                      </button>
+                    </div>
                     <button
                       type="submit"
                       disabled={submitting || uploading}

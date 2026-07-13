@@ -1,17 +1,34 @@
 import React, { useState, useEffect } from "react";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
-import { HomeView } from "./components/HomeView";
-import { AboutView } from "./components/AboutView";
-import { DetailView } from "./components/DetailView";
-import { LoginView } from "./components/LoginView";
-import { DashboardView } from "./components/DashboardView";
+import { Home } from "./pages/Home";
+import { About } from "./pages/About";
+import { QuienesSomos } from "./pages/QuienesSomos";
+import { Detail } from "./pages/Detail";
+import { Login } from "./pages/Login";
+import { Dashboard } from "./pages/Dashboard";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { User, Article, SiteSettings, ArticleCategory } from "./types";
-import { Newspaper, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 
 export const App: React.FC = () => {
-  const [currentView, setView] = useState<string>("home");
-  const [selectedArticleId, setSelectedArticleId] = useState<string>("");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine active view label for Navbar active highlighting
+  const currentView = location.pathname.startsWith("/columna")
+    ? "detail"
+    : location.pathname.startsWith("/columnistas")
+    ? "about"
+    : location.pathname.startsWith("/quienes-somos")
+    ? "quienessomos"
+    : location.pathname.startsWith("/portal")
+    ? "login"
+    : location.pathname.startsWith("/gabinete")
+    ? "dashboard"
+    : "home";
+
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | "Todo">("Todo");
 
   // Global Session State
@@ -28,7 +45,16 @@ export const App: React.FC = () => {
     enableRegistrations: true,
     enableShareButtons: true,
     heroLayout: "editorial",
-    alertBannerText: "Última Edición: Análisis estratégico de geopolítica regional y soberanía institucional chilenas."
+    alertBannerText: "Última Edición: Análisis estratégico de geopolítica regional y soberanía institucional chilenas.",
+    convictionText: "Sostenemos la firme convicción de que la deliberación informada, estructurada sobre los principios de soberanía institucional, macroeconomía científica y un riguroso análisis estratégico, conforma la verdadera columna de sostén para la estabilidad republicana en un orden multilateral multipolar.",
+    quienesSomosTitle: "¿Quiénes Somos?",
+    quienesSomosDescription: "Somos un foro deliberativo técnico-político e independiente dedicado al análisis geopolítico de vanguardia y la inserción de las bases institucionales.",
+    quienesSomosPeople: [],
+    editorialSlogan: "Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas.",
+    facebookUrl: "https://www.facebook.com/profile.php?id=61576453450034",
+    instagramUrl: "https://www.instagram.com/columnapublica/",
+    whatsappUrl: "https://whatsapp.com/channel/0029Vb5knn3KAwEg6aREeX1q",
+    mailContactUrl: "contacto@columnapublica.cl"
   });
 
   // Custom Notifications Toast System
@@ -39,7 +65,7 @@ export const App: React.FC = () => {
 
   const triggerToast = (message: string, type: "success" | "error" | "info") => {
     setToast({ message, type });
-    // Auto-clear after 3.5s
+    // Auto-clear after 4.5s
     setTimeout(() => {
       setToast({ message: "", type: null });
     }, 4500);
@@ -96,19 +122,29 @@ export const App: React.FC = () => {
     setCurrentUser(user);
     localStorage.setItem("columna_publica_session", JSON.stringify(user));
     // Redirect to cabinet dashboard
-    setView("dashboard");
+    navigate("/gabinete");
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem("columna_publica_session");
     triggerToast("Sesión finalizada correctamente.", "info");
-    setView("home");
+    navigate("/");
   };
 
-  const handleSelectArticleDetail = (id: string) => {
-    setSelectedArticleId(id);
-    setView("detail");
+  const setViewWrapper = (view: string) => {
+    if (view === "home") {
+      setSelectedCategory("Todo");
+      navigate("/");
+    } else if (view === "about") {
+      navigate("/columnistas");
+    } else if (view === "quienessomos") {
+      navigate("/quienes-somos");
+    } else if (view === "login") {
+      navigate("/portal");
+    } else if (view === "dashboard") {
+      navigate("/gabinete");
+    }
   };
 
   return (
@@ -118,13 +154,26 @@ export const App: React.FC = () => {
       <Navbar
         currentView={currentView}
         setView={(view) => {
-          setView(view);
+          setViewWrapper(view);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         currentUser={currentUser}
         onLogout={handleLogout}
         selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        setSelectedCategory={(cat) => {
+          setSelectedCategory(cat);
+          if (cat === "Todo") {
+            navigate("/");
+          } else {
+            const slugs: Record<string, string> = {
+              "Soberanía Global": "soberania-global",
+              "Geopolítica Económica": "geopolitica-economica",
+              "Análisis": "analisis",
+              "Opinión": "opinion"
+            };
+            navigate(`/seccion/${slugs[cat] || "todo"}`);
+          }
+        }}
       />
 
       {/* CUSTOM TOAST NOTIFICATION FLOATING PORTAL */}
@@ -143,60 +192,134 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* SCENARIO RENDERING FLOWS */}
+      {/* REACT ROUTER ROUTING ENTRANCE */}
       <main className="flex-grow transition-all duration-300">
-        {currentView === "home" && (
-          <HomeView
-            articles={articles}
-            settings={siteSettings}
-            onSelectArticle={handleSelectArticleDetail}
-            isLoading={articlesLoading}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Home
+                articles={articles}
+                settings={siteSettings}
+                isLoading={articlesLoading}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                currentUser={currentUser}
+                onUpdateSettings={setSiteSettings}
+                triggerToast={triggerToast}
+              />
+            }
           />
-        )}
-
-        {currentView === "about" && (
-          <AboutView 
-            users={[]} // Handled with default seed data
-            articles={articles} 
+          <Route
+            path="/seccion/:categorySlug"
+            element={
+              <Home
+                articles={articles}
+                settings={siteSettings}
+                isLoading={articlesLoading}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                currentUser={currentUser}
+                onUpdateSettings={setSiteSettings}
+                triggerToast={triggerToast}
+              />
+            }
           />
-        )}
-
-        {currentView === "detail" && (
-          <DetailView
-            articleId={selectedArticleId}
-            onBack={() => setView("home")}
-            settings={siteSettings}
-            currentUser={currentUser}
-            triggerToast={triggerToast}
+          <Route
+            path="/columnistas"
+            element={<About articles={articles} />}
           />
-        )}
-
-        {currentView === "login" && (
-          <LoginView
-            onLoginSuccess={handleLoginSuccess}
-            triggerToast={triggerToast}
-            siteSettings={siteSettings}
+          <Route
+            path="/quienes-somos"
+            element={
+              <QuienesSomos
+                settings={siteSettings}
+                currentUser={currentUser}
+                onUpdateSettings={setSiteSettings}
+                triggerToast={triggerToast}
+              />
+            }
           />
-        )}
-
-        {currentView === "dashboard" && currentUser && (
-          <DashboardView
-            currentUser={currentUser}
-            settings={siteSettings}
-            updateSettingsInApp={(newSettings) => setSiteSettings(newSettings)}
-            fetchArticlesExternal={fetchArticles}
-            triggerToast={triggerToast}
-            articles={articles}
+          <Route
+            path="/columna/:slug"
+            element={
+              <Detail
+                articles={articles}
+                articlesLoading={articlesLoading}
+                settings={siteSettings}
+                currentUser={currentUser}
+                triggerToast={triggerToast}
+              />
+            }
           />
-        )}
+          <Route
+            path="/portal"
+            element={
+              <Login
+                currentUser={currentUser}
+                onLoginSuccess={handleLoginSuccess}
+                triggerToast={triggerToast}
+                siteSettings={siteSettings}
+              />
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <Login
+                currentUser={currentUser}
+                onLoginSuccess={handleLoginSuccess}
+                triggerToast={triggerToast}
+                siteSettings={siteSettings}
+              />
+            }
+          />
+          <Route
+            path="/gabinete"
+            element={
+              <Dashboard
+                currentUser={currentUser}
+                settings={siteSettings}
+                updateSettingsInApp={setSiteSettings}
+                fetchArticlesExternal={fetchArticles}
+                triggerToast={triggerToast}
+                articles={articles}
+              />
+            }
+          />
+          <Route
+            path="/politica-privacidad"
+            element={<PrivacyPolicy />}
+          />
+          {/* Fallback route back to home */}
+          <Route
+            path="*"
+            element={
+              <Home
+                articles={articles}
+                settings={siteSettings}
+                isLoading={articlesLoading}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                currentUser={currentUser}
+                onUpdateSettings={setSiteSettings}
+                triggerToast={triggerToast}
+              />
+            }
+          />
+        </Routes>
       </main>
 
-      {/* SOGNIFICATIVE FOOTER ELEMENT */}
-      <Footer />
+      {/* SIGNIFICATIVE FOOTER ELEMENT */}
+      <Footer 
+        settings={siteSettings} 
+        currentUser={currentUser} 
+        onUpdateSettings={setSiteSettings} 
+        triggerToast={triggerToast} 
+      />
 
     </div>
   );
 };
+
 export default App;

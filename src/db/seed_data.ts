@@ -20,7 +20,7 @@ export const SEED_USERS: User[] = [
     name: "Felipe Muñoz Smirnow",
     role: "columnist",
     bio: "Psicoterapeuta Humanista Existencial Gestalt, Logoterapeuta y Analista Existencial.",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-02T12:00:00Z"
   },
@@ -31,7 +31,7 @@ export const SEED_USERS: User[] = [
     name: "Antonia Catalán Troncoso",
     role: "editor",
     bio: "Directora General de Columna Pública.",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-02T10:00:00Z"
   },
@@ -42,7 +42,7 @@ export const SEED_USERS: User[] = [
     name: "Camilo Carrera Orellana",
     role: "columnist",
     bio: "Director de Eco Glocal Media y columnista corporativo.",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-03T11:00:00Z"
   },
@@ -53,7 +53,7 @@ export const SEED_USERS: User[] = [
     name: "Rubén Oyarzo",
     role: "columnist",
     bio: "Exdiputado de la República de Chile y Magíster Internacional en Instituciones Políticas Públicas.",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-03T09:00:00Z"
   },
@@ -64,7 +64,7 @@ export const SEED_USERS: User[] = [
     name: "Nicolas Aguilera",
     role: "columnist",
     bio: "Licenciado en Lengua y Literatura.",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-04T08:00:00Z"
   },
@@ -75,7 +75,7 @@ export const SEED_USERS: User[] = [
     name: "Felipe Valenzuela Escobar",
     role: "columnist",
     bio: "Presidente Nacional - Juventud Liberal de Chile.",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-04T12:00:00Z"
   },
@@ -86,7 +86,7 @@ export const SEED_USERS: User[] = [
     name: "Fernando Claro",
     role: "columnist",
     bio: "Economista y Director Ejecutivo de la FPP (Fundación para el Progreso).",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-05T15:00:00Z"
   },
@@ -97,7 +97,7 @@ export const SEED_USERS: User[] = [
     name: "José Cáceres S.",
     role: "columnist",
     bio: "Cientista Político y Administrador Público.",
-    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-05T14:00:00Z"
   },
@@ -108,7 +108,7 @@ export const SEED_USERS: User[] = [
     name: "Javier Pascual",
     role: "columnist",
     bio: "Investigador en Ciudadanía y Colectivos de Momento Ciudadano.",
-    avatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-06T10:00:00Z"
   },
@@ -119,7 +119,7 @@ export const SEED_USERS: User[] = [
     name: "Gabriela Boscán",
     role: "columnist",
     bio: "Alumna de Periodismo y columnista independiente.",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-06T11:00:00Z"
   },
@@ -130,7 +130,7 @@ export const SEED_USERS: User[] = [
     name: "Dr. Ricardo Fábrega",
     role: "columnist",
     bio: "Presidente de la Corporación Alma Ata y consultor de políticas de salud.",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-07T12:00:00Z"
   },
@@ -141,7 +141,7 @@ export const SEED_USERS: User[] = [
     name: "Uriel González",
     role: "columnist",
     bio: "Administrador Público y Coordinador Ejecutivo de la ONG En Modo Verde.",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-08T09:00:00Z"
   },
@@ -152,7 +152,7 @@ export const SEED_USERS: User[] = [
     name: "Rodrigo Diaz",
     role: "columnist",
     bio: "Asesor territorial y especialista académico en gestión urbana y transporte.",
-    avatar: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-08T10:00:00Z"
   },
@@ -163,7 +163,7 @@ export const SEED_USERS: User[] = [
     name: "José Carrera Orellana",
     role: "columnist",
     bio: "Fundador de Conchalí Centenario y analista de teoría política clásica y contemporánea.",
-    avatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?w=300&q=80",
+    avatar: "/default-avatar.svg",
     isDemo: false,
     createdAt: "2026-06-09T14:00:00Z"
   }
@@ -241,7 +241,7 @@ Porque toda persona en situación calle es una pregunta moral lanzada directamen
     authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
     createdAt: "2026-06-10T12:00:00Z",
     updatedAt: "2026-06-10T12:00:00Z",
-    views: 142
+    views: 0
   },
   {
     id: "art-2",
@@ -277,7 +277,7 @@ La democracia necesita ciudadanos informados. Pero también necesita ciudadanos 
     authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&q=80",
     createdAt: "2026-06-11T09:00:00Z",
     updatedAt: "2026-06-11T09:00:00Z",
-    views: 98
+    views: 0
   },
   {
     id: "art-3",
@@ -302,7 +302,7 @@ Director Eco Glocal Media`,
     authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
     createdAt: "2026-06-11T14:00:00Z",
     updatedAt: "2026-06-11T14:00:00Z",
-    views: 65
+    views: 0
   },
   {
     id: "art-4",
@@ -373,7 +373,7 @@ Porque un país no se gobierna con metáforas. Y mucho menos con poemas electora
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
     createdAt: "2026-06-12T08:00:00Z",
     updatedAt: "2026-06-12T08:00:00Z",
-    views: 310
+    views: 0
   },
   {
     id: "art-5",
@@ -412,7 +412,7 @@ Porque leer no es solo una decisión personal. Es una posibilidad que depende de
     authorAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&q=80",
     createdAt: "2026-06-12T15:00:00Z",
     updatedAt: "2026-06-12T15:00:00Z",
-    views: 184
+    views: 0
   },
   {
     id: "art-6",
@@ -459,7 +459,7 @@ Porque el progreso real no se mide en balances ni en eslóganes. Se mide en mesa
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
     createdAt: "2026-06-13T10:00:00Z",
     updatedAt: "2026-06-13T10:00:00Z",
-    views: 450
+    views: 0
   },
   {
     id: "art-7",
@@ -490,7 +490,7 @@ Que no se diga progresista quien no apoyó el progreso; que no se diga patriota 
     authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80",
     createdAt: "2026-06-13T12:00:00Z",
     updatedAt: "2026-06-13T12:00:00Z",
-    views: 125
+    views: 0
   },
   {
     id: "art-8",
@@ -513,13 +513,13 @@ Venir ahora a utilizarlo demuestra lo falso de las acusaciones, lo decadente de 
     category: "Opinión",
     imageUrl: "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=600&q=80",
     status: "published",
-    tags: ["Piñera", "Bachelet", "FPP", "Derecha", "Historia"],
+    tags: ["Piñera", "Bachelet", "FPP", "Derecha", "Historia", "Centro"],
     authorId: "user-fernando-claro",
     authorName: "Fernando Claro",
     authorAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&q=80",
     createdAt: "2026-06-13T15:00:00Z",
     updatedAt: "2026-06-13T15:00:00Z",
-    views: 195
+    views: 0
   },
   {
     id: "art-9",
@@ -594,7 +594,7 @@ En última instancia, el problema no es solo cuánto dinero tiene el Estado, sin
     authorAvatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&q=80",
     createdAt: "2026-06-14T08:00:00Z",
     updatedAt: "2026-06-14T08:00:00Z",
-    views: 520
+    views: 0
   },
   {
     id: "art-10",
@@ -635,7 +635,7 @@ Las escuelas chilenas tienen hoy una oportunidad pedagógica excepcional para lo
     authorAvatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?w=300&q=80",
     createdAt: "2026-06-14T09:00:00Z",
     updatedAt: "2026-06-14T09:00:00Z",
-    views: 182
+    views: 0
   },
   {
     id: "art-11",
@@ -688,7 +688,7 @@ Esa tensión —evidente, sustantiva, políticamente relevante— quedó complet
     authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
     createdAt: "2026-06-14T11:00:00Z",
     updatedAt: "2026-06-14T11:00:00Z",
-    views: 110
+    views: 0
   },
   {
     id: "art-12",
@@ -741,7 +741,7 @@ Y la política, para ser efectiva, debe distinguir con claridad entre los desaf�
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
     createdAt: "2026-06-14T13:00:00Z",
     updatedAt: "2026-06-14T13:00:00Z",
-    views: 254
+    views: 0
   },
   {
     id: "art-13",
@@ -802,7 +802,7 @@ Quizás no se trate de buscar culpables, sino de empezar a mirarnos con menos mi
     authorAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&q=80",
     createdAt: "2026-06-14T15:00:00Z",
     updatedAt: "2026-06-14T15:00:00Z",
-    views: 132
+    views: 0
   },
   {
     id: "art-14",
@@ -833,13 +833,13 @@ En ese sentido, el principal desafío del nuevo ciclo político será recuperar 
     category: "Análisis",
     imageUrl: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&q=80",
     status: "published",
-    tags: ["Ciclo Político", "Proceso Constituyente", "Gradualidad", "Gobernabilidad", "Chile"],
+    tags: ["Ciclo Político", "Proceso Constituyente", "Gradualidad", "Gobernabilidad", "Chile", "Centro"],
     authorId: "user-ruben-oyarzo",
     authorName: "Rubén Oyarzo",
     authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
     createdAt: "2026-06-15T08:00:00Z",
     updatedAt: "2026-06-15T08:00:00Z",
-    views: 412
+    views: 0
   },
   {
     id: "art-15",
@@ -876,13 +876,13 @@ Chile necesita, con urgencia, menos exaltación y más gobierno. Menos gesto ide
     category: "Análisis",
     imageUrl: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=600&q=80",
     status: "published",
-    tags: ["Moderación", "Salud Pública", "Gobernabilidad", "Transición", "Kast"],
+    tags: ["Moderación", "Salud Pública", "Gobernabilidad", "Transición", "Kast", "Centro"],
     authorId: "user-ricardo-fabrega",
     authorName: "Dr. Ricardo Fábrega",
     authorAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80",
     createdAt: "2026-06-15T09:00:00Z",
     updatedAt: "2026-06-15T09:00:00Z",
-    views: 167
+    views: 0
   },
   {
     id: "art-16",
@@ -919,7 +919,7 @@ El show debe continuar.`,
     authorAvatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&q=80",
     createdAt: "2026-06-15T11:00:00Z",
     updatedAt: "2026-06-15T11:00:00Z",
-    views: 198
+    views: 0
   },
   {
     id: "art-17",
@@ -958,7 +958,7 @@ Una vida está en riesgo, y eso es lo verdaderamente grave. Precisamente por eso
     authorAvatar: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=300&q=80",
     createdAt: "2026-06-15T13:00:00Z",
     updatedAt: "2026-06-15T13:00:00Z",
-    views: 312
+    views: 0
   },
   {
     id: "art-18",
@@ -991,7 +991,7 @@ Valga decir aquí, que no se trata de una convocatoria a la detención sino a la
     authorAvatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?w=300&q=80",
     createdAt: "2026-06-15T14:00:00Z",
     updatedAt: "2026-06-15T14:00:00Z",
-    views: 194
+    views: 0
   }
 ];
 

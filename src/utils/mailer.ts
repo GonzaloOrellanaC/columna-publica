@@ -713,4 +713,191 @@ Si usted no solicitó este cambio, puede ignorar este mensaje de manera segura.
   }
 }
 
+export interface VerificationEmailData {
+  email: string;
+  name: string;
+  code: string;
+}
+
+export async function sendVerificationEmail({ email, name, code }: VerificationEmailData): Promise<boolean> {
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || `"Columna Pública" <noreply@columnapublica.cl>`;
+
+  console.log(`[Email Service] Enviando solicitud de verificación de lector a: ${email}`);
+
+  if (!host || !user || !pass) {
+    console.warn(
+      `[Email Service] ⚠️ Las credenciales SMTP no están completamente configuradas para verificación de lector. ` +
+      `Se simulará la verificación en la consola.`
+    );
+    console.log(`
+================================================================================
+SIMULACIÓN DE VERIFICACIÓN DE LECTOR (SMTP NO CONFIGURADO)
+================================================================================
+Para: ${name} <${email}>
+De: ${from}
+Asunto: Código de Verificación Doctrinal - Columna Pública
+--------------------------------------------------------------------------------
+Estimado(a) ${name},
+
+Gracias por iniciar su inscripción oficial como lector en Columna Pública. Su voz activa
+ayuda a sostener el balance y rigor editorial de nuestro repositorio analítico.
+
+Para activar sus atribuciones completas de debate y evaluación, por favor ingrese
+el siguiente código de seguridad de un solo uso en la plataforma:
+
+CÓDIGO DE VERIFICACIÓN: ${code}
+
+Este código expira en 30 minutos y es privado de su cuenta.
+================================================================================
+    `);
+    return true;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass,
+      },
+    });
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación de Lector - Columna Pública</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #040d1a;
+      color: #ffffff;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #040d1a;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: rgba(10, 25, 47, 0.9);
+      border: 1px solid #d4af3770;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .header {
+      background-color: #0c2340;
+      padding: 30px;
+      text-align: center;
+      border-bottom: 2px solid #d4af37;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+      font-family: 'Georgia', Times, serif;
+    }
+    .subtitle {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #d4af37;
+      margin-top: 5px;
+    }
+    .content {
+      padding: 35px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+    .code-box {
+      background-color: rgba(255, 255, 255, 0.04);
+      border: 1px dashed #dfba53;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 30px 0;
+      text-align: center;
+    }
+    .verification-code {
+      font-size: 36px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      color: #dfba53;
+      font-family: monospace;
+      margin: 0;
+    }
+    .footer {
+      background-color: #040d1a;
+      padding: 20px 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1 class="title">COLUMNA PÚBLICA</h1>
+        <p class="subtitle">Validación de Lector Oficial</p>
+      </div>
+      <div class="content">
+        <h2 style="font-size: 16px; color: #ffffff; margin-top: 0;">Activación de Identidad de Discusión</h2>
+        <p>Estimado(a) <strong>${name}</strong>,</p>
+        <p>
+          Agradecemos su interés en inscribirse como Lector Oficial de nuestro portal de análisis y macroeconomía regional.
+          Su credencial de lectura le habilita para emitir su acuerdo/desacuerdo frente a publicaciones y abrir debates razonados.
+        </p>
+        <p>
+          Para completar su validación de correo electrónico e iniciar su participación doctrinal, ingrese el siguiente código seguro de validación de un solo uso en la pantalla de inscripción:
+        </p>
+        
+        <div class="code-box">
+          <div class="verification-code">${code}</div>
+          <p style="font-size: 11px; color: #cbd5e1; margin-top: 8px; margin-bottom: 0;">Vencimiento estimado en 30 minutos</p>
+        </div>
+
+        <p style="font-size: 11px; color: #64748b; margin-top: 25px;">
+          Si usted no solicitó inscribirse en nuestra plataforma, puede ignorar este mensaje de manera segura. Sus datos de contacto no serán guardados.
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2026 Columna Pública. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject: `${code} es su código de verificación como Lector Oficial - Columna Pública`,
+      html: htmlContent,
+      text: `Estimado(a) ${name},\n\nSu código de validación es: ${code}\n\nIngrese este código para validar su cuenta de Lector Oficial en Columna Pública.\n\nAtentamente,\nConsejo Editorial de Columna Pública`,
+    });
+
+    console.log(`[Email Service] Correo de verificación enviado con éxito a: ${email}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Service] ❌ Error enviando correo de verificación de lector:`, error);
+    return false;
+  }
+}
+
 

@@ -41,6 +41,16 @@ export interface Comment {
   authorEmail: string;
   content: string;
   createdAt: string;
+  parentId?: string;
+}
+
+export interface Person {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatar: string;
+  title: string;
+  description: string;
 }
 
 export interface SiteSettings {
@@ -52,6 +62,15 @@ export interface SiteSettings {
   enableShareButtons: boolean;
   heroLayout: 'editorial' | 'cards' | 'magazine';
   alertBannerText: string;
+  convictionText: string;
+  quienesSomosTitle: string;
+  quienesSomosDescription: string;
+  quienesSomosPeople: Person[];
+  editorialSlogan?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  whatsappUrl?: string;
+  mailContactUrl?: string;
 }
 
 export interface ColumnistApplication {
@@ -72,4 +91,5 @@ export interface DatabaseSchema {
   comments: Comment[];
   settings: SiteSettings;
   applications?: ColumnistApplication[];
+  readerVerifications?: { email: string; name: string; code: string; verified: boolean; style: string; createdAt: string }[];
 }
