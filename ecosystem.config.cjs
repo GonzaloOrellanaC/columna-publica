@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "columna-publica",
       script: "./dist/server.cjs",
+      cwd: __dirname,
       instances: "max",
       exec_mode: "cluster",
       autorestart: true,
