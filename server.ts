@@ -1,7 +1,7 @@
+import 'dotenv/config';
 import express from "express";
 import path from "path";
 import cors from "cors";
-import dotenv from "dotenv";
 import fs from "fs";
 import { Database } from "./src/db/db";
 import { connectMongoDB } from "./src/db/mongodb";
@@ -20,7 +20,6 @@ import aiRouter from "./src/routes/ai.routes";
 import applicationRouter from "./src/routes/application.routes";
 import logsRouter from "./src/routes/logs.routes";
 
-dotenv.config();
 
 const isProd = process.env.NODE_ENV === "production";
 const app = express();
