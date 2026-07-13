@@ -126,7 +126,6 @@ export async function connectMongoDB(): Promise<boolean> {
     isConnected = true;
     logger.info("[MongoDB/Mongoose] Conectado exitosamente a la base de datos de MongoDB.");
 
-    await runMongoSeed();
     return true;
   } catch (err: any) {
     logger.error(`[MongoDB/Mongoose] Falló la conexión a MongoDB. Se usará el sistema de archivos local de respaldo. Causa técnica del error: ${err.message}`, err);
@@ -138,7 +137,7 @@ export function isMongoDbConnected(): boolean {
   return isConnected;
 }
 
-async function runMongoSeed() {
+export async function runMongoSeed() {
   try {
     const fs = await import("fs");
     const path = await import("path");
