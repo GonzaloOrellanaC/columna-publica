@@ -180,6 +180,20 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
   cleanHtml = cleanHtml.replace(/<meta\s+property="og:[^"]*"\s+content="[^"]*"\s*\/?>/gi, "");
   cleanHtml = cleanHtml.replace(/<meta\s+name="twitter:[^"]*"\s+content="[^"]*"\s*\/?>/gi, "");
 
+  let imageType = "image/jpeg";
+  let imageWidth = "1200";
+  let imageHeight = "630";
+
+  if (imageUrl.toLowerCase().endsWith(".svg")) {
+    imageType = "image/svg+xml";
+    imageWidth = "500";
+    imageHeight = "120";
+  } else if (imageUrl.toLowerCase().endsWith(".png")) {
+    imageType = "image/png";
+    imageWidth = "1200";
+    imageHeight = "630";
+  }
+
   const metaBlock = `
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
@@ -189,6 +203,10 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     <meta property="og:title" content="${escapedTitle}" />
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image:secure_url" content="${imageUrl}" />
+    <meta property="og:image:type" content="${imageType}" />
+    <meta property="og:image:width" content="${imageWidth}" />
+    <meta property="og:image:height" content="${imageHeight}" />
     <meta property="og:url" content="${fullUrl}" />
     <meta property="og:site_name" content="${siteName}" />
     <meta property="og:locale" content="es_CL" />
