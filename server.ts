@@ -234,7 +234,7 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     <meta name="description" content="${escapedDescription}" />
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn / Threads / Telegram / Instagram Stories -->
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="${isHomePage ? 'website' : 'article'}" />
     <meta property="og:title" content="${escapedTitle}" />
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:image" content="${imageUrl}" />
@@ -242,6 +242,7 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     <meta property="og:image:type" content="${imageType}" />
     <meta property="og:image:width" content="${imageWidth}" />
     <meta property="og:image:height" content="${imageHeight}" />
+    <meta property="og:image:alt" content="${escapedTitle}" />
     <meta property="og:url" content="${fullUrl}" />
     <meta property="og:site_name" content="${siteName}" />
     <meta property="og:locale" content="es_CL" />
