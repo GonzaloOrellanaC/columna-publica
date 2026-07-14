@@ -69,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <nav className="border-b border-[#dfba53]/20 bg-[#040c18] sticky top-0 z-40 backdrop-blur-md bg-opacity-95 shadow-md transition-all">
       <div className="max-w-7xl mx-auto py-4 px-6 md:px-12 flex justify-between items-center">
         {/* LOGO */}
-        <div className="cursor-pointer" onClick={handleLogoClick}>
+        <div className="cursor-pointer" onClick={() => {navigate("/");}}>
           <Logo className="h-10 md:h-11 w-auto" />
         </div>
 
