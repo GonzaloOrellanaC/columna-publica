@@ -114,7 +114,7 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
   let siteName = "Columna Pública";
   let siteSubtitle = "Asuntos Políticos, Macroeconomía e Inserción Global";
   let editorialSlogan = "Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas.";
-  const fallbackImage = "/logo.svg";
+  const fallbackImage = "/logo.png";
 
   try {
     const settings = await DatabaseService.getSettings();
