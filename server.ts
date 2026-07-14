@@ -25,6 +25,8 @@ const isProd = process.env.NODE_ENV === "production";
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+console.log(`[Metadata Injection] isProd: ${isProd}`);
+
 // Trust reverse proxies to resolve correct protcol (https) and client IP addresses
 app.set("trust proxy", true);
 
@@ -268,23 +270,6 @@ async function bootstrap() {
   if (isProd) {
     // Serve static assets from production dist
     app.use(express.static(path.resolve("./dist")));
-    app.get("*", async (req, res, next) => {
-      // Avoid intercepting static files like .js, .css, .png, etc.
-      if (req.path.includes(".") && !req.path.endsWith(".html")) {
-        return next();
-      }
-      try {
-        const htmlPath = path.resolve("./dist/index.html");
-        if (fs.existsSync(htmlPath)) {
-          const rawHtml = fs.readFileSync(htmlPath, "utf-8");
-          const enrichedHtml = await injectDynamicMetadata(req, rawHtml);
-          return res.setHeader("Content-Type", "text/html").send(enrichedHtml);
-        }
-      } catch (err) {
-        console.error("[Metadata Injection Error] fallback to static file", err);
-      }
-      res.sendFile(path.resolve("./dist/index.html"));
-    });
   } else {
     // Mounting Vite middleware to serve hot assets on port 3000 during dev
     // Dynamically loading vite package only in development environment to prevent production load issues
@@ -296,6 +281,26 @@ async function bootstrap() {
     
     app.use(vite.middlewares);
   }
+
+  app.get("*", async (req, res, next) => {
+    // Avoid intercepting static files like .js, .css, .png, etc.
+    if (req.path.includes(".") && !req.path.endsWith(".html")) {
+      return next();
+    }
+    
+    let htmlPath = isProd ? path.resolve("./dist/index.html") : path.resolve("./index.html");
+    
+    try {
+      if (fs.existsSync(htmlPath)) {
+        const rawHtml = fs.readFileSync(htmlPath, "utf-8");
+        const enrichedHtml = await injectDynamicMetadata(req, rawHtml);
+        return res.setHeader("Content-Type", "text/html").send(enrichedHtml);
+      }
+    } catch (err) {
+      console.error("[Metadata Injection Error] fallback to static file", err);
+    }
+    res.sendFile(htmlPath);
+  });
 
   app.listen(port, () => {
     console.log(`[Server] Columna Pública corriendo exitosamente en el puerto ${port}`);
