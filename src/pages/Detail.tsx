@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { DetailView } from "../components/DetailView";
 import { Article, User, SiteSettings } from "../types";
 import { slugify } from "../utils/slugify";
+import { goHomeOrBack } from "../utils/navigation";
 import { ArrowLeft } from "lucide-react";
 
 interface DetailProps {
@@ -43,7 +44,7 @@ export const Detail: React.FC<DetailProps> = ({
   }, [slug, articles, articlesLoading]);
 
   const handleBack = () => {
-    navigate("/");
+    goHomeOrBack(navigate);
   };
 
   if (articlesLoading || (slug && !articleId)) {

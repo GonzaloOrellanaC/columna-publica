@@ -1,17 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, ArrowLeft, Lock, Database, EyeOff, UserCheck, AlertCircle } from "lucide-react";
+import { goHomeOrBack } from "../utils/navigation";
 
 export const PrivacyPolicy: React.FC = () => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    // Go back in history or to home if no history
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/");
-    }
+    goHomeOrBack(navigate);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

@@ -434,7 +434,9 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
                 <div className="space-y-1.5 flex-1 min-w-0 text-left">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-base sm:text-lg font-cinzel font-bold text-white tracking-wider leading-tight truncate">
-                      {person.firstName} {person.lastName}
+                      <a href={`/columnista/${`${person.firstName}-${person.lastName}`.toLowerCase().replace(/ /g, "-")}`} className="hover:text-[#dfba53] transition-colors">
+                        {person.firstName} {person.lastName}
+                      </a>
                     </h3>
                     
                     {/* Admin Actions */}

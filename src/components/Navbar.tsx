@@ -9,6 +9,7 @@ import {
   X 
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 
 interface NavbarProps {
   currentView: string;
@@ -28,12 +29,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   setSelectedCategory
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Helper inside click handlers
   const handleLogoClick = () => {
     setSelectedCategory("Todo");
     setView("home");
     setIsOpen(false);
+    navigate("/");
   };
 
   const handleCategoryNav = (cat: ArticleCategory | "Todo") => {
@@ -74,7 +77,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="hidden lg:flex items-center space-x-2.5">
           {/* Inicio */}
           <button
-            onClick={() => handleCategoryNav("Todo")}
+            onClick={() => {
+              navigate("/");
+            }}
             className={`text-[11px] uppercase tracking-wider font-mono px-2 py-1.5 rounded transition-all cursor-pointer ${
               currentView === "home" && selectedCategory === "Todo"
                 ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
@@ -82,54 +87,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             Inicio
-          </button>
-
-          {/* Soberanía Global */}
-          <button
-            onClick={() => handleCategoryNav("Soberanía Global")}
-            className={`text-[11px] uppercase tracking-wider font-mono px-2 py-1.5 rounded transition-all cursor-pointer ${
-              currentView === "home" && selectedCategory === "Soberanía Global"
-                ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                : "text-slate-300 hover:text-[#dfba53] border border-transparent"
-            }`}
-          >
-            Soberanía Global
-          </button>
-
-          {/* Geopolítica Económica */}
-          <button
-            onClick={() => handleCategoryNav("Geopolítica Económica")}
-            className={`text-[11px] uppercase tracking-wider font-mono px-2 py-1.5 rounded transition-all cursor-pointer ${
-              currentView === "home" && selectedCategory === "Geopolítica Económica"
-                ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                : "text-slate-300 hover:text-[#dfba53] border border-transparent"
-            }`}
-          >
-            Geopolítica Económica
-          </button>
-
-          {/* Análisis */}
-          <button
-            onClick={() => handleCategoryNav("Análisis")}
-            className={`text-[11px] uppercase tracking-wider font-mono px-2 py-1.5 rounded transition-all cursor-pointer ${
-              currentView === "home" && selectedCategory === "Análisis"
-                ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                : "text-slate-300 hover:text-[#dfba53] border border-transparent"
-            }`}
-          >
-            Análisis
-          </button>
-
-          {/* Opinión */}
-          <button
-            onClick={() => handleCategoryNav("Opinión")}
-            className={`text-[11px] uppercase tracking-wider font-mono px-2 py-1.5 rounded transition-all cursor-pointer ${
-              currentView === "home" && selectedCategory === "Opinión"
-                ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                : "text-slate-300 hover:text-[#dfba53] border border-transparent"
-            }`}
-          >
-            Opinión
           </button>
 
           {/* Quiénes Somos */}
@@ -240,7 +197,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="px-6 py-4 flex flex-col space-y-2.5">
               {/* Menu items */}
               <button
-                onClick={() => handleCategoryNav("Todo")}
+                onClick={() => {
+                  handleCategoryNav("Todo");
+                  navigate("/");
+                }}
                 className={`w-full text-left text-xs uppercase tracking-wider font-mono px-3 py-2.5 rounded transition-all flex items-center space-x-2 cursor-pointer ${
                   currentView === "home" && selectedCategory === "Todo"
                     ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
@@ -248,50 +208,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <span>Inicio</span>
-              </button>
-
-              <button
-                onClick={() => handleCategoryNav("Soberanía Global")}
-                className={`w-full text-left text-xs uppercase tracking-wider font-mono px-3 py-2.5 rounded transition-all flex items-center space-x-2 cursor-pointer ${
-                  currentView === "home" && selectedCategory === "Soberanía Global"
-                    ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                    : "text-slate-300 hover:text-[#dfba53] hover:bg-slate-900 border border-transparent"
-                }`}
-              >
-                <span>Soberanía Global</span>
-              </button>
-
-              <button
-                onClick={() => handleCategoryNav("Geopolítica Económica")}
-                className={`w-full text-left text-xs uppercase tracking-wider font-mono px-3 py-2.5 rounded transition-all flex items-center space-x-2 cursor-pointer ${
-                  currentView === "home" && selectedCategory === "Geopolítica Económica"
-                    ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                    : "text-slate-300 hover:text-[#dfba53] hover:bg-slate-900 border border-transparent"
-                }`}
-              >
-                <span>Geopolítica Económica</span>
-              </button>
-
-              <button
-                onClick={() => handleCategoryNav("Análisis")}
-                className={`w-full text-left text-xs uppercase tracking-wider font-mono px-3 py-2.5 rounded transition-all flex items-center space-x-2 cursor-pointer ${
-                  currentView === "home" && selectedCategory === "Análisis"
-                    ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                    : "text-slate-300 hover:text-[#dfba53] hover:bg-slate-900 border border-transparent"
-                }`}
-              >
-                <span>Análisis</span>
-              </button>
-
-              <button
-                onClick={() => handleCategoryNav("Opinión")}
-                className={`w-full text-left text-xs uppercase tracking-wider font-mono px-3 py-2.5 rounded transition-all flex items-center space-x-2 cursor-pointer ${
-                  currentView === "home" && selectedCategory === "Opinión"
-                    ? "text-[#dfba53] bg-[#dfba53]/10 font-bold border border-[#dfba53]/25"
-                    : "text-slate-300 hover:text-[#dfba53] hover:bg-slate-900 border border-transparent"
-                }`}
-              >
-                <span>Opinión</span>
               </button>
 
               <button

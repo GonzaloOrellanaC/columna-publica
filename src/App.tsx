@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Home } from "./pages/Home";
 import { About } from "./pages/About";
+import { ColumnistProfile } from "./pages/ColumnistProfile";
 import { QuienesSomos } from "./pages/QuienesSomos";
 import { Detail } from "./pages/Detail";
 import { Login } from "./pages/Login";
@@ -11,10 +12,18 @@ import { Dashboard } from "./pages/Dashboard";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { User, Article, SiteSettings, ArticleCategory } from "./types";
 import { Bell } from "lucide-react";
+import { goHomeOrBack } from "./utils/navigation";
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
+
+  useEffect(() => {
+    if (navigationType !== "POP") {
+      window.scrollTo(0, 0);
+    }
+  }, [location, navigationType]);
 
   // Determine active view label for Navbar active highlighting
   const currentView = location.pathname.startsWith("/columna")
@@ -36,7 +45,9 @@ export const App: React.FC = () => {
 
   // Articles & Settings Lists State
   const [articles, setArticles] = useState<Article[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({
     siteName: "Columna Pública",
     siteSubtitle: "Asuntos Políticos, Macroeconomía e Inserción Global",
@@ -87,6 +98,21 @@ export const App: React.FC = () => {
     }
   };
 
+  // Fetch all users
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      if (data.success) {
+        setUsers(data.users);
+      }
+    } catch (e) {
+      console.error("[App] Failed to fetch users data", e);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   // Fetch Site Settings from Backend
   const fetchSettings = async () => {
     try {
@@ -115,6 +141,7 @@ export const App: React.FC = () => {
       }
     }
     fetchArticles();
+    fetchUsers();
     fetchSettings();
   }, []);
 
@@ -129,13 +156,13 @@ export const App: React.FC = () => {
     setCurrentUser(null);
     localStorage.removeItem("columna_publica_session");
     triggerToast("Sesión finalizada correctamente.", "info");
-    navigate("/");
+    goHomeOrBack(navigate);
   };
 
   const setViewWrapper = (view: string) => {
     if (view === "home") {
       setSelectedCategory("Todo");
-      navigate("/");
+      goHomeOrBack(navigate);
     } else if (view === "about") {
       navigate("/columnistas");
     } else if (view === "quienessomos") {
@@ -155,7 +182,6 @@ export const App: React.FC = () => {
         currentView={currentView}
         setView={(view) => {
           setViewWrapper(view);
-          window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         currentUser={currentUser}
         onLogout={handleLogout}
@@ -222,6 +248,16 @@ export const App: React.FC = () => {
                 currentUser={currentUser}
                 onUpdateSettings={setSiteSettings}
                 triggerToast={triggerToast}
+              />
+            }
+          />
+          <Route
+            path="/columnista/:name"
+            element={
+              <ColumnistProfile
+                settings={siteSettings}
+                users={users}
+                usersLoading={usersLoading}
               />
             }
           />

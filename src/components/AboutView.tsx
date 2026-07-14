@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { User, Article } from "../types";
-import { Award, BookOpen, Compass, ShieldCheck, Mail, Users } from "lucide-react";
+import { Award, BookOpen, Compass, ShieldCheck, Users } from "lucide-react";
 import { JoinUsSection } from "./JoinUsSection";
+import { createSlug } from "../utils/slug";
 
 interface AboutViewProps {
   users: User[];
@@ -27,7 +29,10 @@ export const AboutView: React.FC<AboutViewProps> = ({ users, articles }) => {
   }, [users]);
 
   // Filter active academic writers
-  const activeWriters = writerList.filter(u => u.role === 'admin' || u.role === 'columnist' || u.role === 'editor');
+  const activeWriters = writerList.filter(u => 
+    (u.role === 'admin' || u.role === 'columnist' || u.role === 'editor') && 
+    u.email !== 'admin@columnapublica.cl'
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 space-y-16">
@@ -95,11 +100,13 @@ export const AboutView: React.FC<AboutViewProps> = ({ users, articles }) => {
           {activeWriters.map(writer => {
             // Count total published columns by this author
             const numColumns = articles.filter(a => a.authorId === writer.id && a.status === 'published').length;
+            const slug = createSlug(writer.name);
 
             return (
-              <div 
+              <Link
                 key={writer.id}
-                className="bg-gradient-to-b from-[#051122] to-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 hover:border-[#dfba53]/30 transition-all shadow-md"
+                to={`/columnista/${slug}`}
+                className="bg-gradient-to-b from-[#051122] to-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col justify-between space-y-4 hover:border-[#dfba53]/30 transition-all shadow-md block"
               >
                 <div className="space-y-4">
                   {/* Photo Profile */}
@@ -123,18 +130,13 @@ export const AboutView: React.FC<AboutViewProps> = ({ users, articles }) => {
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-slate-900 flex justify-between items-center text-[10px] font-mono text-slate-500">
+                <div className="pt-4 border-t border-slate-900 flex justify-end items-center text-[10px] font-mono text-slate-500">
                   <span className="flex items-center space-x-1 text-slate-400">
                     <BookOpen className="w-3.5 h-3.5 text-[#dfba53]" />
                     <span>{numColumns} Columnas Publicadas</span>
                   </span>
-                  
-                  <span className="inline-flex items-center text-slate-500">
-                    <Mail className="w-3 h-3 mr-1" />
-                    {writer.isDemo ? 'perfil-social@dem.cl' : writer.email}
-                  </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
