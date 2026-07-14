@@ -111,13 +111,14 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
   };
 
   // Fetch general site settings
-  let siteName = "Columna Pública";
-  let siteSubtitle = "Asuntos Políticos, Macroeconomía e Inserción Global";
-  let editorialSlogan = "Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas.";
+  let siteName = "[DB_DEBUG] Columna Pública";
+  let siteSubtitle = "[DB_DEBUG] Asuntos Políticos, Macroeconomía e Inserción Global";
+  let editorialSlogan = "[DB_DEBUG] Un foro deliberativo técnico-político de alto estándar académico redactado por académicos, consejeros constitucionales y economistas.";
   const fallbackImage = "/logo.png";
 
   try {
     const settings = await DatabaseService.getSettings();
+    console.log("[Metadata Injection] Settings loaded:", JSON.stringify(settings));
     if (settings) {
       siteName = settings.siteName || siteName;
       siteSubtitle = settings.siteSubtitle || siteSubtitle;
