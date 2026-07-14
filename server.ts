@@ -131,24 +131,26 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
   let description = "";
   let imageUrl = "";
 
-  const pathname = req.path;
-  const isHomePage = pathname === "/" || pathname === "" || pathname === "/index.html";
+  const pathname = req.path.toLowerCase();
+  const isHomePage = pathname === "/" || pathname === "" || pathname === "/index.html" || pathname === "/home";
 
   if (isHomePage) {
     title = `${siteName} | ${siteSubtitle}`;
-    description = `"${editorialSlogan}"`;
+    description = editorialSlogan;
     imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
 
     try {
       const articles = await DatabaseService.getArticles({ includeDrafts: false });
       if (articles && articles.length > 0) {
-        // Use the first (latest/featured) published article's image as the homepage preview image (to avoid unsupported SVG logo issues on social media)
-        const article = articles[0];
+        // Sort by date if possible, otherwise take the first
+        const sortedArticles = articles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const article = sortedArticles[0];
+        
+        // Use featured article image, but allow SVG fallback
         if (article.imageUrl) {
           imageUrl = ensureAbsoluteUrl(article.imageUrl, baseUrl);
         }
-        // Also make the homepage social preview highly engaging by referencing this featured column
-        description = truncate(`${article.title} — ${article.subtitle || article.content}`, 155);
+        description = truncate(article.subtitle || article.content, 155);
       }
     } catch (err) {
       console.warn("[Metadata Injection] Error getting featured article for homepage preview", err);
