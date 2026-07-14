@@ -44,6 +44,7 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
   const [formFirstName, setFormFirstName] = useState("");
   const [formLastName, setFormLastName] = useState("");
   const [formAvatar, setFormAvatar] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -51,42 +52,21 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Suggested Avatars for quick selection
-  const suggestedAvatars = [
-    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Gonzalo
-    "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Ricardo
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Female writer 1
-    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Female writer 2
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Male author 1
-    "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"  // Male author 2
-  ];
+  // Default Avatar
+  const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80";
 
   // Handle File Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("avatar", file);
-
-    try {
-      const res = await fetch("/api/upload/avatar", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFormAvatar(data.url);
-        triggerToast("Imagen subida correctamente.", "success");
-      } else {
-        triggerToast(data.message || "Error al subir la imagen.", "error");
-      }
-    } catch (err) {
-      triggerToast("Error de conexión durante la subida.", "error");
-    } finally {
-      setUploading(false);
-    }
+    // Convert to base64 for preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormAvatar(reader.result as string);
+      setSelectedFile(file);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Save general page texts
@@ -125,13 +105,15 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
       setFormFirstName(person.firstName);
       setFormLastName(person.lastName);
       setFormAvatar(person.avatar);
+      setSelectedFile(null); // Reset
       setFormTitle(person.title);
       setFormDescription(person.description);
     } else {
       setEditingPerson(null);
       setFormFirstName("");
       setFormLastName("");
-      setFormAvatar(suggestedAvatars[2]); // select female writer as initial placeholder
+      setFormAvatar(DEFAULT_AVATAR); // select female writer as initial placeholder
+      setSelectedFile(null); // Reset
       setFormTitle("");
       setFormDescription("");
     }
@@ -147,6 +129,38 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
     }
 
     setSaving(true);
+    
+    let avatarUrl = formAvatar;
+    if (selectedFile) {
+      // Upload the file
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("avatar", selectedFile);
+
+      try {
+        const res = await fetch("/api/upload/avatar", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          avatarUrl = data.url;
+        } else {
+          triggerToast(data.message || "Error al subir la imagen.", "error");
+          setSaving(false);
+          setUploading(false);
+          return;
+        }
+      } catch (err) {
+        triggerToast("Error de conexión durante la subida.", "error");
+        setSaving(false);
+        setUploading(false);
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+    
     const updatedPeopleList = [...(settings.quienesSomosPeople || [])];
 
     if (editingPerson) {
@@ -157,7 +171,7 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
           ...editingPerson,
           firstName: formFirstName,
           lastName: formLastName,
-          avatar: formAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          avatar: avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
           title: formTitle,
           description: formDescription
         };
@@ -168,7 +182,7 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
         id: "p_" + Date.now(),
         firstName: formFirstName,
         lastName: formLastName,
-        avatar: formAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+        avatar: avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
         title: formTitle,
         description: formDescription
       };
@@ -532,13 +546,6 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
                 <div className="space-y-2">
                   <label className="text-[10px] font-mono tracking-wider text-slate-400 block">Foto de Perfil</label>
                   <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={formAvatar}
-                      onChange={(e) => setFormAvatar(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#dfba53] font-mono"
-                      placeholder="Dirección URL de la imagen..."
-                    />
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -555,23 +562,12 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
                     />
                   </div>
 
-                  {/* Quick selection avatars */}
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[9px] font-mono text-slate-500 block">Selección rápida de avatares fotográficos:</span>
-                    <div className="flex items-center space-x-2 overflow-x-auto py-1">
-                      {suggestedAvatars.map((url, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setFormAvatar(url)}
-                          className={`w-10 h-10 rounded-full overflow-hidden shrink-0 border transition-all cursor-pointer ${
-                            formAvatar === url ? "border-[#dfba53] scale-110 shadow-lg" : "border-slate-800 hover:border-slate-600"
-                          }`}
-                        >
-                          <img src={url} alt={`opcion ${i}`} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
+                  <div className="mt-2">
+                    <img
+                      src={formAvatar || DEFAULT_AVATAR}
+                      alt="Perfil"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-slate-800"
+                    />
                   </div>
                 </div>
 
