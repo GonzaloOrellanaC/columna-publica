@@ -207,6 +207,8 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
   }
 
+  console.log(`[Metadata Injection] Request path: ${pathname}, isHomePage: ${isHomePage}, title: ${title}, description: ${description}`);
+
   // Pre-process title & description formatting to keep markup perfectly compliant
   const escapedTitle = title.replace(/"/g, "&quot;");
   const escapedDescription = description.replace(/"/g, "&quot;");
