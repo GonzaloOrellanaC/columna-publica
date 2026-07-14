@@ -68,6 +68,11 @@ export const App: React.FC = () => {
     mailContactUrl: "contacto@columnapublica.cl"
   });
 
+  // Update document title dynamically
+  useEffect(() => {
+    document.title = `${siteSettings.siteName} | ${siteSettings.siteSubtitle}`;
+  }, [siteSettings, location]);
+
   // Custom Notifications Toast System
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" | null }>({
     message: "",
