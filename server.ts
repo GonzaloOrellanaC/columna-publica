@@ -138,6 +138,21 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     title = `${siteName} | ${siteSubtitle}`;
     description = `"${editorialSlogan}"`;
     imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);
+
+    try {
+      const articles = await DatabaseService.getArticles({ includeDrafts: false });
+      if (articles && articles.length > 0) {
+        // Use the first (latest/featured) published article's image as the homepage preview image (to avoid unsupported SVG logo issues on social media)
+        const article = articles[0];
+        if (article.imageUrl) {
+          imageUrl = ensureAbsoluteUrl(article.imageUrl, baseUrl);
+        }
+        // Also make the homepage social preview highly engaging by referencing this featured column
+        description = truncate(`${article.title} — ${article.subtitle || article.content}`, 155);
+      }
+    } catch (err) {
+      console.warn("[Metadata Injection] Error getting featured article for homepage preview", err);
+    }
   } else if (pathname.includes("/columna/")) {
     const parts = pathname.split("/columna/");
     const slug = parts[parts.length - 1];
@@ -148,7 +163,14 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     if (slug) {
       try {
         const articles = await DatabaseService.getArticles({ includeDrafts: false });
-        const article = articles.find(art => slugify(art.title) === slug);
+        let article = articles.find(art => slugify(art.title) === slug || art.id === slug);
+        
+        // Handle "articulo-id" suffix matching in the backend too
+        if (!article && slug.startsWith("articulo-")) {
+          const id = slug.replace("articulo-", "");
+          article = articles.find(art => art.id === id);
+        }
+
         if (article) {
           title = `${article.title} | ${siteName}`;
           description = truncate(article.subtitle || article.content, 155);
@@ -177,7 +199,7 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     description = `Conozca a los destacados columnistas, académicos y analistas que escriben y debaten diariamente en ${siteName}.`;
     imageUrl = "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=1200&auto=format&fit=crop&q=80";
   } else {
-    // Standard default for any other unhandled route
+    // Standard default for any unhandled route
     title = `${siteName} | ${siteSubtitle}`;
     description = `"${editorialSlogan}"`;
     imageUrl = ensureAbsoluteUrl(fallbackImage, baseUrl);

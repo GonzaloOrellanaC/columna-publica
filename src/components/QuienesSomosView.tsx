@@ -46,8 +46,10 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
   const [formAvatar, setFormAvatar] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Suggested Avatars for quick selection
   const suggestedAvatars = [
@@ -58,6 +60,34 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80", // Male author 1
     "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"  // Male author 2
   ];
+
+  // Handle File Upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      const res = await fetch("/api/upload/avatar", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormAvatar(data.url);
+        triggerToast("Imagen subida correctamente.", "success");
+      } else {
+        triggerToast(data.message || "Error al subir la imagen.", "error");
+      }
+    } catch (err) {
+      triggerToast("Error de conexión durante la subida.", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Save general page texts
   const handleSaveTexts = async () => {
@@ -500,14 +530,30 @@ export const QuienesSomosView: React.FC<QuienesSomosViewProps> = ({
 
                 {/* Avatar URL Selection */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-mono tracking-wider text-slate-400 block">Foto de Perfil (Dirección Web URL)</label>
-                  <input
-                    type="url"
-                    value={formAvatar}
-                    onChange={(e) => setFormAvatar(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#dfba53] font-mono"
-                    placeholder="Dirección URL de la imagen..."
-                  />
+                  <label className="text-[10px] font-mono tracking-wider text-slate-400 block">Foto de Perfil</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={formAvatar}
+                      onChange={(e) => setFormAvatar(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#dfba53] font-mono"
+                      placeholder="Dirección URL de la imagen..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs font-mono transition-all cursor-pointer"
+                    >
+                      {uploading ? "Subiendo..." : "Subir desde PC"}
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </div>
 
                   {/* Quick selection avatars */}
                   <div className="space-y-1.5 pt-1">
