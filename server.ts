@@ -262,7 +262,16 @@ async function injectDynamicMetadata(req: express.Request, html: string): Promis
     <meta name="twitter:url" content="${fullUrl}" />
   `;
 
-  return cleanHtml.replace("<head>", `<head>${metaBlock}`);
+  const finalHtml = cleanHtml.replace(/<head>/i, `<head>${metaBlock}`);
+  
+  if (finalHtml === html) {
+    console.warn("[Metadata Injection] FAILED: No changes made to HTML. HTML head tag might not be found.");
+    console.log("[Metadata Injection] HTML content snippet:", cleanHtml.substring(0, 200));
+  } else {
+    console.log("[Metadata Injection] SUCCESS: Metadata injected");
+  }
+
+  return finalHtml;
 }
 
 // ======================== FRONTEND ASSETS ENGINE ========================
@@ -289,6 +298,7 @@ async function bootstrap() {
     }
     
     let htmlPath = isProd ? path.resolve("./dist/index.html") : path.resolve("./index.html");
+    console.log(`[Metadata Injection] Checking htmlPath: ${htmlPath}, exists: ${fs.existsSync(htmlPath)}`);
     
     try {
       if (fs.existsSync(htmlPath)) {
